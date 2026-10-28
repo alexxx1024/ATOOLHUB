@@ -1,0 +1,26 @@
+[
+  {
+    "id": "CyberShb",
+    "name": "赛博圣杯",
+    "url": "./CyberShb/cyberShb.html",
+    "category": "",
+    "desc": "",
+    "emoji": "",
+    "entry": "./CyberShb/cyberShb.html",
+    "icon": "",
+    "order": 0,
+    "hidden": false
+  },
+  {
+    "id": "PiggyPeggy",
+    "name": "Piggy Peggy",
+    "url": "./PiggyPeggy/index.html",
+    "category": "",
+    "desc": "",
+    "emoji": "",
+    "entry": "./PiggyPeggy/index.html",
+    "icon": "pig-bottom.svg",
+    "order": 1,
+    "hidden": false
+  }
+]

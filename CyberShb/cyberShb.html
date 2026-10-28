@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛博圣杯</title>
+    <!-- 引入 QR Code 引擎库生成支付宝二维码 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* --- 颜色与全局变量 --- */
+        :root {
+            --bg-color: #1a1a1a;
+            --bg-card: #242424;
+            --text-main: #d8d8d8;
+            --text-muted: #777777;
+            --text-disabled: #4a4a4a;
+            
+            /* 指定红 */
+            --red-main: #FF5A59;
+            --red-light: #ff7b7a;
+            --red-dark: #cc4544;
+            --red-glow: rgba(255, 90, 89, 0.35);
+            
+            /* 字体设置 */
+            --font-song: "SimSun", "Songti SC", "STSong", "Noto Serif CJK SC", serif;
+            --font-hei: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-hei);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        /* --- 头部标题 --- */
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .main-title {
+            font-family: var(--font-song);
+            font-size: 2.8rem;
+            color: var(--red-main);
+            letter-spacing: 4px;
+            text-shadow: none;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .sub-title {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        /* --- 圣杯展示区域 --- */
+        .divination-container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 290px;
+            position: relative;
+            perspective: 1000px; /* 3D 透视视界 */
+        }
+
+        /* 圣杯外层容器 */
+        .cups-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            margin-top: 20px;
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            transform-origin: center top;
+        }
+
+        /* 结果展现时的缩小上移样式 */
+        .cups-wrapper.minimized {
+            transform: scale(0.68) translateY(-15px);
+        }
+
+        /* 单个圣杯外框容器 */
+        .cup-item {
+            width: 135px;
+            height: 135px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 10px var(--red-glow));
+            /* 平滑过渡到落定的随机姿态 */
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* 初始默认位置与角度分布 */
+        .cup-left-wrap {
+            margin-top: 56px; 
+            transform: rotate(180deg);
+        }
+
+        .cup-right-wrap {
+            margin-top: 24px; 
+            transform: rotate(0deg);
+        }
+
+        .cup-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- 浮动动画（待机微动） --- */
+        .cups-wrapper.floating .cup-left-wrap {
+            animation: floatLeft 3s ease-in-out infinite alternate;
+        }
+        .cups-wrapper.floating .cup-right-wrap {
+            animation: floatRight 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes floatLeft {
+            0% { transform: rotate(180deg) translateY(0px); }
+            100% { transform: rotate(180deg) translateY(-6px); }
+        }
+
+        @keyframes floatRight {
+            0% { transform: rotate(0deg) translateY(0px); }
+            100% { transform: rotate(0deg) translateY(-6px); }
+        }
+
+        /* --- 3D 混合投掷翻转动画 --- */
+        .cups-wrapper.tossing .cup-left-wrap {
+            animation: tossComplex 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .cups-wrapper.tossing .cup-right-wrap {
+            animation: tossComplex 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite 0.12s;
+        }
+
+        /* 复合高抛翻转动画 */
+        @keyframes tossComplex {
+            0% { 
+                transform: translateY(0) rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+            }
+            30% {
+                transform: translateY(-110px) rotateX(360deg) rotateY(180deg) rotateZ(180deg) scale(1.15);
+            }
+            70% {
+                transform: translateY(-40px) rotateX(720deg) rotateY(360deg) rotateZ(360deg) scale(1.05);
+            }
+            100% { 
+                transform: translateY(0) rotateX(1080deg) rotateY(540deg) rotateZ(540deg) scale(1);
+            }
+        }
+
+        /* --- 结果显示区域 --- */
+        .result-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease;
+            text-align: center;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 90, 89, 0.25);
+            border-radius: 8px;
+            padding: 20px 24px;
+            width: 100%;
+            margin-top: -10px;
+            pointer-events: none;
+        }
+
+        .result-card.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .result-title {
+            font-family: var(--font-song);
+            font-size: 1.5rem;
+            color: var(--red-main);
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+
+        .result-desc {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            line-height: 1.6;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- 输入框与控制区 --- */
+        .input-section {
+            width: 100%;
+            max-width: 480px;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .question-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid #333333;
+            border-radius: 6px;
+            padding: 12px 16px;
+            color: var(--text-main);
+            font-family: var(--font-hei);
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s ease;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .question-input:focus {
+            border-color: var(--red-main);
+            box-shadow: 0 0 8px var(--red-glow);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .question-input::placeholder {
+            color: #555555;
+        }
+
+        /* 主投掷按钮 */
+        .toss-btn {
+            font-family: var(--font-song);
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: #ffffff;
+            background: var(--red-main);
+            border: none;
+            border-radius: 30px;
+            padding: 12px 42px;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--red-glow);
+        }
+
+        .toss-btn:hover:not(:disabled) {
+            background: var(--red-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 90, 89, 0.5);
+        }
+
+        .toss-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .toss-btn:disabled {
+            background: #333333;
+            color: var(--text-disabled);
+            cursor: not-allowed;
+            box-shadow: none;
+            border: 1px solid #2a2a2a;
+        }
+
+        .counter-text {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 12px;
+            letter-spacing: 1px;
+        }
+
+        /* --- 随喜赞赏板块 --- */
+        .appreciation-section {
+            margin-top: 45px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            border-top: 1px dashed #333333;
+            padding-top: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .appreciation-title {
+            font-family: var(--font-song);
+            font-size: 1.1rem;
+            color: var(--red-main);
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        .appreciation-body {
+            opacity: 0.25;
+            filter: grayscale(100%);
+            transition: all 0.4s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .appreciation-section:hover .appreciation-body {
+            opacity: 1;
+            filter: grayscale(0%);
+        }
+
+        .qrcode-box {
+            background: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .alipay-hint {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .appreciation-section:hover .alipay-hint {
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. 标题区 -->
+    <header>
+        <h1 class="main-title">赛博圣杯</h1>
+        <p class="sub-title">请虔诚发问，心中默祷所求之事</p>
+    </header>
+
+    <!-- 2. 圣杯与结果展示区 -->
+    <main class="divination-container">
+        <div class="cups-wrapper floating" id="cupsWrapper">
+            <!-- 左杯 -->
+            <div class="cup-item cup-left-wrap" id="cupLeftWrap">
+                <div class="cup-svg" id="cupLeft"></div>
+            </div>
+            <!-- 右杯 -->
+            <div class="cup-item cup-right-wrap" id="cupRightWrap">
+                <div class="cup-svg" id="cupRight"></div>
+            </div>
+        </div>
+
+        <div class="result-card" id="resultCard">
+            <h2 class="result-title" id="resultTitle">圣杯 · 应允</h2>
+            <p class="result-desc" id="resultDesc">心意已达，妈祖应允。所求之事顺遂吉祥，放宽心前行。</p>
+        </div>
+    </main>
+
+    <!-- 3. 输入框与按键操作 -->
+    <section class="input-section">
+        <input type="text" class="question-input" id="questionInput" placeholder="在此写下你的心中所惑...（可选）" autocomplete="off">
+        <button class="toss-btn" id="tossBtn" onclick="tossCups()">虔诚投掷</button>
+        <p class="counter-text" id="counterText">已投掷 0 次</p>
+    </section>
+
+    <!-- 4. 随喜赞赏板块 -->
+    <footer class="appreciation-section">
+        <div class="appreciation-title">随喜赞赏 · 广结善缘</div>
+        <div class="appreciation-body">
+            <div class="qrcode-box" id="qrcode"></div>
+            <p class="alipay-hint">支付宝扫码，请量力而行</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- 基准 SVG 定义 ---
+        // 阳面（平面朝上）
+        const svgYang = `
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <path d="M 20 20 C 65 15, 85 40, 80 80 C 55 55, 35 45, 20 20 Z" 
+                      fill="var(--red-main)" 
+                      stroke="var(--red-light)" 
+                      stroke-width="2.5" 
+                      stroke-linejoin="round"/>
+                <path d="M 26 26 C 60 22, 76 43, 73 72 C 53 51, 37 43, 26 26 Z" 
+                      fill="rgba(255,255,255,0.18)"/>
+            </svg>
+        `;
+
+        // 阴面（凸面朝上）
+        const svgYin = `
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <path d="M 20 20 C 65 15, 85 40, 80 80 C 55 55, 35 45, 20 20 Z" 
+                      fill="var(--red-dark)" 
+                      stroke="var(--red-main)" 
+                      stroke-width="2.5" 
+                      stroke-linejoin="round"/>
+                <path d="M 20 20 C 50 35, 65 55, 80 80" 
+                      fill="none" 
+                      stroke="var(--red-light)" 
+                      stroke-width="2"/>
+                <path d="M 20 20 C 35 45, 55 65, 80 80" 
+                      fill="none" 
+                      stroke="rgba(0,0,0,0.35)" 
+                      stroke-width="3"/>
+            </svg>
+        `;
+
+        // --- 三态结果文案定义 ---
+        const resultsData = {
+            sheng: {
+                title: "圣杯 · 应允",
+                desc: "心意已达，妈祖应允。所求之事顺遂吉祥，放宽心前行。",
+                left: 'yin',  // 一阴一阳
+                right: 'yang'
+            },
+            xiao: {
+                title: "笑杯 · 未定",
+                desc: "神明微笑，机缘未至。或因所问未明，请整理心意后再试。",
+                left: 'yang', // 两阳
+                right: 'yang'
+            },
+            yin: {
+                title: "阴杯 · 严许",
+                desc: "神明不许，切勿强求。顺应自然，或需另寻他路。",
+                left: 'yin',  // 两阴
+                right: 'yin'
+            }
+        };
+
+        // --- 状态追踪 ---
+        let tossCount = 0;
+        const maxToss = 8;
+        let isTossing = false;
+
+        // DOM 元素引用
+        const cupsWrapper = document.getElementById('cupsWrapper');
+        const cupLeftWrap = document.getElementById('cupLeftWrap');
+        const cupRightWrap = document.getElementById('cupRightWrap');
+        const cupLeft = document.getElementById('cupLeft');
+        const cupRight = document.getElementById('cupRight');
+        const resultCard = document.getElementById('resultCard');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultDesc = document.getElementById('resultDesc');
+        const tossBtn = document.getElementById('tossBtn');
+        const counterText = document.getElementById('counterText');
+
+        // 初始化默认展示（一阴一阳）
+        function initCups() {
+            cupLeft.innerHTML = svgYin;
+            cupRight.innerHTML = svgYang;
+        }
+
+        // --- 投掷逻辑 ---
+        function tossCups() {
+            if (isTossing || tossCount >= maxToss) return;
+
+            isTossing = true;
+            tossBtn.disabled = true;
+
+            // 1. 彻底清除之前的内联样式与过渡效应，防止干扰动画
+            cupLeftWrap.style.transition = 'none';
+            cupRightWrap.style.transition = 'none';
+            cupLeftWrap.style.transform = '';
+            cupRightWrap.style.transform = '';
+
+            // 强制重绘 (Reflow) 使内联样式清除即刻生效
+            void cupLeftWrap.offsetWidth;
+
+            // 恢复过渡样式，用于后续落定平滑过渡
+            cupLeftWrap.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+            cupRightWrap.style.transition = 'transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+            // 重置视觉与卡片
+            resultCard.classList.remove('show');
+            cupsWrapper.classList.remove('minimized', 'floating');
+            cupsWrapper.classList.add('tossing');
+
+            // 随机抽选结果
+            const types = ['sheng', 'xiao', 'yin'];
+            const randomResultKey = types[Math.floor(Math.random() * types.length)];
+            const resultObj = resultsData[randomResultKey];
+
+            // 1.1秒混合高抛翻转动画
+            setTimeout(() => {
+                // 停止翻转动画
+                cupsWrapper.classList.remove('tossing');
+
+                // 渲染最终阴阳造型
+                cupLeft.innerHTML = resultObj.left === 'yin' ? svgYin : svgYang;
+                cupRight.innerHTML = resultObj.right === 'yin' ? svgYin : svgYang;
+
+                // --- 彻底全随机参数计算 ---
+                // 1. 全 360 度完全随机自转角度
+                const randomLeftRot = Math.floor(Math.random() * 360);
+                const randomRightRot = Math.floor(Math.random() * 360);
+
+                // 2. 扩大位移散落范围 (-35px 到 +35px)
+                const randomLeftX = Math.floor(Math.random() * 70 - 35);
+                const randomLeftY = Math.floor(Math.random() * 70 - 35);
+                const randomRightX = Math.floor(Math.random() * 70 - 35);
+                const randomRightY = Math.floor(Math.random() * 70 - 35);
+
+                // 应用全随机结果样式
+                cupLeftWrap.style.transform = `translate(${randomLeftX}px, ${randomLeftY}px) rotate(${randomLeftRot}deg)`;
+                cupRightWrap.style.transform = `translate(${randomRightX}px, ${randomRightY}px) rotate(${randomRightRot}deg)`;
+
+                // 更新计数
+                tossCount++;
+                counterText.innerText = `已投掷 ${tossCount} 次`;
+
+                // 1秒后缩小上移并显示文字
+                setTimeout(() => {
+                    cupsWrapper.classList.add('minimized');
+                    
+                    resultTitle.innerText = resultObj.title;
+                    resultDesc.innerText = resultObj.desc;
+                    resultCard.classList.add('show');
+
+                    // 检查是否达到 8 次上限
+                    if (tossCount >= maxToss) {
+                        tossBtn.disabled = true;
+                        tossBtn.innerText = "过八不问 · 择日再祷";
+                        counterText.innerText = `已投掷 ${tossCount} 次（神明静默）`;
+                    } else {
+                        tossBtn.disabled = false;
+                        tossBtn.innerText = "重新投掷";
+                    }
+
+                    isTossing = false;
+                }, 1000);
+
+            }, 1100);
+        }
+
+        // --- 初始化生成支付宝二维码 ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initCups();
+            
+            new QRCode(document.getElementById("qrcode"), {
+                text: "https://qr.alipay.com/fkx18355rxvvwxz5ilsite3",
+                width: 120,
+                height: 120,
+                colorDark : "#FF5A59",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.M
+            });
+        });
+    </script>
+</body>
+</html>

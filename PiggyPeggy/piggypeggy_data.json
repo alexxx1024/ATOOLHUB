@@ -1,0 +1,92 @@
+{
+  "balance": 140,
+  "totalSaved": 140,
+  "totalWithdrawn": 0,
+  "depositCount": 14,
+  "transactions": [
+    {
+      "time": "2026-08-05T00:51:09.942Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 10
+    },
+    {
+      "time": "2026-08-05T00:51:10.142Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 20
+    },
+    {
+      "time": "2026-08-05T06:48:52.317Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 30
+    },
+    {
+      "time": "2026-08-07T00:51:03.693Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 40
+    },
+    {
+      "time": "2026-08-10T01:14:46.238Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 50
+    },
+    {
+      "time": "2026-08-13T03:22:46.198Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 60
+    },
+    {
+      "time": "2026-08-13T03:22:46.511Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 70
+    },
+    {
+      "time": "2026-08-19T01:00:36.180Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 80
+    },
+    {
+      "time": "2026-08-19T01:00:36.418Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 90
+    },
+    {
+      "time": "2026-08-20T06:39:27.967Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 100
+    },
+    {
+      "time": "2026-08-21T02:08:15.834Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 110
+    },
+    {
+      "time": "2026-08-24T08:07:51.049Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 120
+    },
+    {
+      "time": "2026-08-25T05:20:48.727Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 130
+    },
+    {
+      "time": "2026-09-07T01:43:38.677Z",
+      "type": "存入",
+      "amount": 10,
+      "balance": 140
+    }
+  ]
+}

@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="Cb4O8HZV9PulOKLtNw7Bxv">
+<head data-page-node-id="pY580Y7GR1qZRiAgUukk9a">
+<meta charset="UTF-8" data-page-node-id="n84xzLcqavoVYkEn2hLPuN">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="wY8SQ688gjnU6C32R2sO9Y">
+<title>Piggy Peggy</title>
+<style>
+:root{
+  --bg:#0d1017;
+  --panel:#151a24;
+  --panel2:#1b2230;
+  --white:#ffffff;
+  --muted:#8d96a8;
+  --blue:#3375f5;
+  --red:#f54a4a;
+  --line:rgba(255,255,255,.10);
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--white);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;
+  font-weight:400;
+}
+button{font:inherit;color:inherit;font-weight:400}
+.app{width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:space-between}
+.header-title-box{
+  text-align:center;
+  padding-top:64px;
+  padding-bottom:4px;
+  flex-shrink:0;
+}
+.logo{
+  font-weight:normal;
+  letter-spacing:.06em;
+  color:var(--blue);
+  font-size:32px;
+  line-height:1.2;
+  font-family: Georgia, "Times New Roman", Times, serif;
+  text-transform: uppercase;
+  margin-bottom:8px;
+}
+.sub-logo{
+  font-size:14px;
+  line-height:1.4;
+  color:var(--white);
+  font-weight:400;
+  letter-spacing:.02em;
+}
+.bottom-bar{
+  height:60px;display:flex;align-items:center;justify-content:center;
+  gap:16px;border-top:1px solid var(--line);
+  position:relative;
+  flex-shrink:0;
+}
+.bottom-btn{
+  border:1px solid transparent;background:transparent;border-radius:10px;
+  padding:8px 16px;color:#5c6475;cursor:pointer;
+  transition:all .2s ease;font-size:14px;font-weight:400;
+}
+.bottom-btn:hover{
+  color:var(--white);
+  border-color:rgba(255,255,255,.2);
+  background:var(--panel);
+}
+.copyright{
+  position:absolute;
+  right:24px;
+  font-size:12px;
+  color:#5c6475;
+  transition:color .2s ease;
+  cursor:default;
+}
+.copyright:hover{
+  color:var(--white);
+}
+.main{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:28px;position:relative;
+  min-height:0;
+}
+.pig-area{
+  width:min(560px,78vw);height:min(480px,58vh);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;perspective:900px;user-select:none;
+  cursor:grab;touch-action:none
+}
+.pig-area:active{cursor:grabbing}
+.pig{
+  width:min(430px,62vw);max-height:420px;object-fit:contain;
+  filter:drop-shadow(0 25px 30px rgba(0,0,0,.35));
+  pointer-events:none;
+  transition:transform .05s linear;
+}
+
+/* 小猪震动喷水动画 */
+.pig.shaking {
+  animation: pigVibrate 0.1s infinite alternate ease-in-out;
+}
+@keyframes pigVibrate {
+  0% { transform: translate(-4px, 1px) rotate(-1deg); }
+  100% { transform: translate(4px, -1px) rotate(1deg); }
+}
+
+.coins{display:flex;gap:18px;flex-shrink:0;}
+.coin{
+  width:84px;height:84px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.65);
+  background:#fff;color:#111;
+  box-shadow:0 8px 22px rgba(0,0,0,.3),inset 0 -4px 0 rgba(0,0,0,.08);
+  cursor:pointer;font-weight:400;font-size:19px;
+  transition:transform .15s,box-shadow .15s
+}
+.coin:hover{transform:translateY(-5px);box-shadow:0 14px 30px rgba(51,117,245,.25)}
+.coin:active{transform:translateY(-1px) scale(.96)}
+.hint{
+  font-size:12px;
+  color:#5c6475;
+  transition:color .2s ease;
+  cursor:default;
+  font-weight:400;
+  flex-shrink:0;
+  text-align:center;
+  margin-top:16px;
+}
+.hint:hover{
+  color:var(--white);
+}
+.balance-overlay{
+  position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  flex-direction:column;pointer-events:none;z-index:10;
+  line-height: 1.4;
+}
+.balance-overlay.show{display:flex}
+.balance-label{font-size:12px;color:var(--white);margin-bottom:4px;font-weight:400}
+.balance{font-size:46px;font-weight:400;letter-spacing:-.04em;color:var(--white);}
+.balance-hint{font-size:11px;color:var(--white);margin-top:8px;font-weight:400}
+
+/* 统一提示框 */
+.action-tip, .withdraw-preview{
+  position:absolute;
+  top:-12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#ffffff;
+  border:1px solid rgba(255,255,255,.9);
+  padding:8px 18px;
+  border-radius:999px;
+  font-size:13px;
+  color:var(--blue);
+  z-index:15;
+  display:none;
+  pointer-events:none;
+  font-weight:500;
+  white-space:nowrap;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+}
+.action-tip.show, .withdraw-preview.show{display:block}
+
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;z-index:20
+}
+.modal-bg.show{display:flex}
+.modal{
+  width:min(420px,calc(100vw - 40px));background:var(--panel);
+  border:1px solid var(--line);border-radius:20px;padding:24px;
+  box-shadow:0 30px 80px rgba(0,0,0,.5);color:var(--white);
+  position:relative;
+}
+.modal-close{
+  position:absolute;top:12px;right:12px;
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--line);background:transparent;
+  color:var(--muted);font-size:16px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s ease;
+}
+.modal-close:hover{color:var(--white);border-color:rgba(255,255,255,.3)}
+.modal h2{margin:0 0 8px;font-size:20px;color:var(--white);font-weight:400}
+.modal p{color:var(--white);font-size:13px;line-height:1.7;font-weight:400}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+.modal-actions button{
+  padding:9px 15px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;cursor:pointer;color:var(--white);font-weight:400
+}
+.modal-actions .primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.modal-actions .danger{background:var(--red);border-color:var(--red);color:#fff}
+.log-list{max-height:45vh;overflow:auto;margin-top:12px}
+.log-item{
+  display:flex;justify-content:space-between;gap:20px;
+  padding:11px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--white);
+}
+.log-item b{font-weight:400}
+.log-item small{display:block;color:var(--white);opacity:0.8;margin-top:3px;font-weight:400}
+.data-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.data-row button{padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;color:var(--white);font-weight:400;font-size:13px}
+.data-row button.clear-btn{border-color:rgba(245,74,74,.4);color:#ff6b6b}
+
+/* 本地日志自动同步 */
+.fs-label{font-size:13px;color:var(--muted);margin-bottom:6px}
+.fs-input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--white);font-size:13px;outline:none;font-family:inherit}
+.fs-input:focus{border-color:var(--blue)}
+.fs-row{display:flex;gap:8px;margin-top:8px}
+.fs-row button{flex:1;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;color:var(--white);font-weight:400;font-size:13px}
+.fs-row button.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.fs-status{margin-top:8px;font-size:13px;line-height:1.6;color:var(--muted);word-break:break-all}
+.fs-status.ok{color:#4cd964}
+.fs-status.err{color:#ff6b6b}
+
+/* 存钱飞行硬币 */
+.fly-coin{
+  position:fixed;width:56px;height:56px;border-radius:50%;background:#fff;color:#111;
+  display:flex;align-items:center;justify-content:center;font-weight:400;
+  z-index:40;pointer-events:none;
+  animation:flyCoin .65s cubic-bezier(.2,.8,.2,1) forwards
+}
+@keyframes flyCoin{
+  0%{transform:translate(0,0) scale(1);opacity:1}
+  70%{opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}
+}
+
+/* 喷射出的白色微型散落硬币粒子 */
+.fountain-coin {
+  position: fixed;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 35;
+  pointer-events: none;
+  animation: fountainFly 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes fountainFly {
+  0% {
+    transform: translate(0, 0) scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(calc(var(--vx) * 0.5), var(--vy-peak)) scale(1) rotate(180deg);
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(var(--vx), var(--vy-bottom)) scale(0.7) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 移动端适配 */
+@media(max-width:600px){
+  .header-title-box{
+    padding-top:64px;
+    padding-bottom:4px;
+  }
+  .logo{
+    font-size:32px;
+    margin-bottom:8px;
+    line-height:1.2;
+  }
+  .sub-logo{
+    font-size:14px;
+    line-height:1.4;
+  }
+  .main{
+    gap:14px;
+  }
+  .pig-area{
+    height:min(320px, 42vh);
+  }
+  .action-tip, .withdraw-preview{
+    top:-8px;
+    font-size:12px;
+    padding:6px 14px;
+  }
+  .coin{width:62px;height:62px;font-size:15px}
+  .coins{gap:16px}
+  .hint{font-size:12px;padding:0 12px;}
+  
+  .balance-overlay{
+    line-height:1.2;
+  }
+  .balance{
+    font-size:38px;
+  }
+  .balance-label{
+    margin-bottom:2px;
+  }
+  .balance-hint{
+    margin-top:4px;
+  }
+
+  .bottom-bar{
+    height:auto;
+    min-height:80px;
+    padding-top:8px;
+    padding-bottom:calc(8px + env(safe-area-inset-bottom));
+    flex-direction:column;
+    gap:4px;
+  }
+  .bottom-btn-box{
+    display:flex;
+    gap:16px;
+  }
+  .copyright{
+    position:static;
+    font-size:11px;
+    margin:0;
+    text-align:center;
+  }
+}
+</style>
+</head>
+
+<body data-page-node-id="kV7cd3m2kmYKFHudodOzxY">
+<div class="app" data-page-node-id="55jNXzpUC0fpfbYwHxOE38">
+  <div class="header-title-box" data-page-node-id="weS9U7rUAKo5jzwmjbEPgY">
+    <div class="logo" data-page-node-id="4Y5IWOEsDRTi1Wxn2SBsEa">PIGGY PEGGY</div>
+    <div class="sub-logo" data-page-node-id="503ZETtc3WnrThaTMttr7O">I'm here, save money.</div>
+  </div>
+
+  <main class="main" data-page-node-id="VLsQ9HDYW3s9DkysILEsGv">
+    <div class="pig-area" id="pigArea" data-page-node-id="XXCwtmjjibnZHlG8AZjRJc">
+      <div class="action-tip" id="actionTip" data-page-node-id="HicVdLRCtC28dG86s4YCvB"></div>
+      <img id="pig" class="pig" alt="Piggy Peggy" data-page-node-id="Yc5QOe8q7vEQcJv3rFcIs1">
+      <div class="balance-overlay" id="balanceOverlay" data-page-node-id="ANGQ6IZHAtyY69QNig0nk5">
+        <div class="balance-label" data-page-node-id="YsNYG0mZ2ZDrthome8nGUP">当前余额</div>
+        <div class="balance" id="balanceText" data-page-node-id="bIG8foXeKdsm1X8KNLxacE">¥0</div>
+        <div class="balance-hint" data-page-node-id="leT0spRaVaDHdv0rIYqLEF">再次点击回到正面</div>
+      </div>
+      <div class="withdraw-preview" id="withdrawPreview" data-page-node-id="d3BVV81Xy4xSMtHJvabsiJ">取出：¥0</div>
+    </div>
+
+    <div class="coins" data-page-node-id="MUHtCNa7sAl3g0KMFheeo2">
+      <button class="coin" data-amount="10" data-page-node-id="y3gxV0UTe8ESmlrwzCSxWh">¥10</button>
+      <button class="coin" data-amount="15" data-page-node-id="g9Rl11ZbzodGsqlsj4gCBQ">¥15</button>
+      <button class="coin" data-amount="20" data-page-node-id="DLoxyc9CUY3myxljnbB3Iu">¥20</button>
+    </div>
+
+    <div class="hint" data-page-node-id="ADwD7osk2X4h0loYGk2SlA">点击硬币存钱 · 点击小猪查看底面 · 左右拖拽摇晃取钱</div>
+  </main>
+
+  <footer class="bottom-bar" data-page-node-id="KfA5bcTLpRHDVt4ny4CZ89">
+    <div class="bottom-btn-box" data-page-node-id="DKvwBeavGPCaCCDTtUC8wa">
+      <button class="bottom-btn" id="logBtn" data-page-node-id="AIiQ0T1lQcHdOeeY1VAskX">记录</button>
+      <button class="bottom-btn" id="dataBtn" data-page-node-id="goYJbyOFzDNH64zgg6iV9K">管理</button>
+    </div>
+    <div class="copyright" data-page-node-id="KUMKSELJ6PECTDcf6NKIwx">© Created by Aeliana.x</div>
+  </footer>
+</div>
+
+<div class="modal-bg" id="modalBg" data-page-node-id="yErbPsd5riNyZJbS0a5Vn9">
+  <div class="modal" id="modal" data-page-node-id="FGmYJTSuieVz4YFsX19OJH"></div>
+</div>
+
+<script>
+const SVG_SIDE = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_2" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 221.9 146.6">
+  <defs>
+    <style>
+      .st0 { fill: none; }
+      .st1 { fill: #3375f5; }
+      .st2 { fill: #fff; }
+    </style>
+  </defs>
+  <g id="_图层_1-2">
+    <path class="st1" d="M82.3,28.6h57.4c24.7,0,44.7,20,44.7,44.7h0c0,24.7-20,44.7-44.7,44.7h-57.4c-24.7,0-44.7-20-44.7-44.7h0c0-24.7,20-44.7,44.7-44.7Z"/>
+    <g>
+      <rect class="st1" x="61.7" y="108.7" width="14" height="18.6" rx="6.3" ry="6.3"/>
+      <rect class="st1" x="80.8" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+      <rect class="st1" x="127.1" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+      <rect class="st1" x="146.2" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+    </g>
+    <path d="M107.9,54.9v-10.4c0-1.6,1.3-3,3-3h0c1.6,0,3,1.3,3,3v10.4c0,1.6-1.3,3-3,3h0c-1.6,0-3-1.3-3-3Z"/>
+    <g>
+      <path class="st2" d="M63.6,65.5h5.5c4.3,0,7.8,3.5,7.8,7.8h0c0,4.3-3.5,7.8-7.8,7.8h-5.5c-4.3,0-7.8-3.5-7.8-7.8h0c0-4.3,3.5-7.8,7.8-7.8Z"/>
+      <path class="st2" d="M50.4,65.5h0c1.3,0,2.4,1.1,2.4,2.4h0c0,1.3-1.1,2.4-2.4,2.4h0c-1.3,0-2.4-1.1-2.4-2.4h0c0-1.3,1.1-2.4,2.4-2.4Z"/>
+      <path class="st2" d="M81.9,65.5h0c1.3,0,2.4,1.1,2.4,2.4h0c0,1.3-1.1,2.4-2.4,2.4h0c-1.3,0-2.4-1.1-2.4-2.4h0c0-1.3,1.1-2.4,2.4-2.4Z"/>
+      <path class="st1" d="M62.2,70.3h0c.9,0,1.7.8,1.7,1.7v3.4c0,.9-.8,1.7-1.7,1.7h0c-.9,0-1.7-.8-1.7-1.7v-3.4c0-.9.8-1.7,1.7-1.7Z"/>
+      <rect class="st1" x="68.9" y="70.3" width="3.4" height="6.8" rx="1.7" ry="1.7"/>
+    </g>
+    <path class="st1" d="M172.7,53.5c8.3-2.5,14.1-10.1,13.1-18.9-.4-3.7-1.8-7.9-5.4-9.5-3.1-1.5-6.6-.6-8.6,2.2-4.4,6.1.2,14.8,6.8,16.9,9,2.9,16.7-3.6,19.5-11.7,1.3-3.7-4.5-5.2-5.8-1.6-1.4,3.9-4.4,7.7-8.9,7.9-3,.2-8.9-2.7-7.2-6.7s3.5,1.6,3.7,3.1,0,3.3-.5,4.8c-1.2,3.9-4.4,6.5-8.3,7.7s-2.1,6.9,1.6,5.8h0Z"/>
+    <rect class="st0" width="221.9" height="146.6"/>
+  </g>
+</svg>`);
+
+const SVG_BOTTOM = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_2" data-name="图层 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 221.94 146.64">
+  <defs>
+    <style>
+      .cls-1 { fill: none; }
+      .cls-2 { fill: #3375f5; }
+    </style>
+  </defs>
+  <g id="_图层_1-2" data-name="图层 1">
+    <rect class="cls-2" x="37.61" y="28.65" width="146.72" height="89.34" rx="44.67" ry="44.67"/>
+    <g>
+      <rect class="cls-2" x="61.69" y="108.68" width="14.05" height="18.63" rx="6.31" ry="6.31"/>
+      <rect class="cls-2" x="146.2" y="108.68" width="14.05" height="18.63" rx="6.31" ry="6.31"/>
+    </g>
+    <g>
+      <rect class="cls-2" x="61.69" y="19.34" width="14.05" height="18.63" rx="6.31" ry="6.31"/>
+      <rect class="cls-2" x="146.2" y="19.34" width="14.05" height="18.63" rx="6.31" ry="6.31"/>
+    </g>
+    <path class="cls-2" d="M180.31,74.92c8.51,2.81,17.85-.63,21.84-8.86,1.57-3.24,2.45-7.15.42-10.34-1.65-2.6-4.53-3.78-7.53-3-7.46,1.94-8.87,11.84-5.05,17.53,5.19,7.72,15.7,7.23,22.57,2.34,3.12-2.22.13-7.43-3.03-5.18s-6.85,3.78-10.66,2.4c-1.8-.65-3.58-1.98-4.43-3.75-.71-1.48-1.26-6.31,1.16-6.99,2.75-.77,1.77,2.97,1.14,4.3-.81,1.72-1.91,3.09-3.41,4.25-3.42,2.65-7.45,2.84-11.44,1.52-3.67-1.21-5.25,4.58-1.6,5.79h0Z"/>
+    <rect class="cls-1" width="221.94" height="146.64"/>
+  </g>
+</svg>`);
+
+const SVG_DIZZY = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_2" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 221.9 146.6">
+  <defs>
+    <style>
+      .st0 { fill: none; }
+      .st1 { fill: #3375f5; }
+      .st2 { fill: #fff; }
+    </style>
+  </defs>
+  <g id="_图层_1-2">
+    <path class="st1" d="M82.3,28.6h57.4c24.7,0,44.7,20,44.7,44.7h0c0,24.7-20,44.7-44.7,44.7h-57.4c-24.7,0-44.7-20-44.7-44.7h0c0-24.7,20-44.7,44.7-44.7Z"/>
+    <g>
+      <rect class="st1" x="41.6" y="94.8" width="14" height="18.6" rx="6.3" ry="6.3" transform="translate(102.9 2.9) rotate(53.2)"/>
+      <rect class="st1" x="80.8" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+      <rect class="st1" x="127.1" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+      <rect class="st1" x="146.2" y="108.7" width="14.1" height="18.6" rx="6.3" ry="6.3"/>
+    </g>
+    <path d="M107.9,54.9v-10.4c0-1.6,1.3-3,3-3h0c1.6,0,3,1.3,3,3v10.4c0,1.6-1.3,3-3,3h0c-1.6,0-3-1.3-3-3Z"/>
+    <g>
+      <path class="st2" d="M67.4,65.1l4.9,2.5c3.8,2,5.4,6.7,3.4,10.5h0c-2,3.8-6.7,5.4-10.5,3.4l-4.9-2.5c-3.8-2-5.4-6.7-3.4-10.5h0c2-3.8,6.7-5.4,10.5-3.4Z"/>
+      <path class="st1" d="M64,68.7h0c.8.4,1.2,1.5.7,2.3l-1.5,3c-.4.8-1.5,1.2-2.3.7h0c-.8-.4-1.2-1.5-.7-2.3l1.5-3c.4-.8,1.5-1.2,2.3-.7Z"/>
+      <rect class="st1" x="68.3" y="72.2" width="3.4" height="6.8" rx="1.7" ry="1.7" transform="translate(42 -23.5) rotate(27.1)"/>
+      <rect class="st2" x="81.3" y="63.4" width="26" height="8.1" rx="4.1" ry="4.1" transform="translate(75.3 -46.9) rotate(45)"/>
+      <rect class="st2" x="81.3" y="63.4" width="26" height="8.1" rx="4.1" ry="4.1" transform="translate(208.6 48.5) rotate(135)"/>
+      <rect class="st2" x="37.8" y="68" width="16.5" height="5.1" rx="2.6" ry="2.6" transform="translate(48.9 -13.6) rotate(35)"/>
+      <rect class="st2" x="37.8" y="68" width="16.5" height="5.1" rx="2.6" ry="2.6" transform="translate(130.2 73.5) rotate(125)"/>
+    </g>
+    <path class="st1" d="M172.7,53.5c8.3-2.5,14.1-10.1,13.1-18.9-.4-3.7-1.8-7.9-5.4-9.5-3.1-1.5-6.6-.6-8.6,2.2-4.4,6.1.2,14.8,6.8,16.9,9,2.9,16.7-3.6,19.5-11.7,1.3-3.7-4.5-5.2-5.8-1.6-1.4,3.9-4.4,7.7-8.9,7.9-3,.2-8.9-2.7-7.2-6.7s3.5,1.6,3.7,3.1,0,3.3-.5,4.8c-1.2,3.9-4.4,6.5-8.3,7.7s-2.1,6.9,1.6,5.8h0Z"/>
+    <rect class="st0" width="221.9" height="146.6"/>
+  </g>
+</svg>`);
+
+const dataDefault={
+  balance:0,totalSaved:0,totalWithdrawn:0,depositCount:0,transactions:[]
+};
+let data={...dataDefault};
+
+const pigArea=document.getElementById('pigArea');
+const pig=document.getElementById('pig');
+const balanceOverlay=document.getElementById('balanceOverlay');
+const balanceText=document.getElementById('balanceText');
+const withdrawPreview=document.getElementById('withdrawPreview');
+const actionTip=document.getElementById('actionTip');
+const modalBg=document.getElementById('modalBg');
+const modal=document.getElementById('modal');
+
+pig.src = SVG_SIDE;
+
+let isBottom=false;
+let dragging=false;
+let startX=0;
+let currentX=0;
+let shakeDistance=0;
+let lastDirection=0;
+let withdrawAmount=0;
+let tipTimer=null;
+let isClick=true;
+
+// 连续摇晃计数与空余额提示标志
+let shakeHistory = [];
+let isDizzy = false;
+let emptyNoticeShown = false;
+
+function persistData(){
+  fsSaveData().then(r=>{
+    if(r&&r.ok){
+      showActionTip('已存入并同步到日志');
+    }else{
+      showActionTip('已存入，但日志同步失败，请先在管理中选择文件夹授权');
+    }
+  });
+}
+function money(n){return '¥'+Number(n).toLocaleString('zh-CN')}
+
+function showActionTip(msg, duration = 2000){
+  clearTimeout(tipTimer);
+  actionTip.textContent=msg;
+  actionTip.classList.add('show');
+  tipTimer=setTimeout(()=>{
+    actionTip.classList.remove('show');
+  }, duration);
+}
+
+function updateBalance(){
+  balanceText.textContent=money(data.balance);
+}
+function showBalance(){
+  updateBalance();
+  balanceOverlay.classList.add('show');
+}
+function hideBalance(){
+  balanceOverlay.classList.remove('show');
+}
+
+function togglePigView(){
+  if(isDizzy) return; // 眩晕状态下禁止翻转
+  isBottom=!isBottom;
+  if(isBottom){
+    pig.src=SVG_BOTTOM;
+    showBalance();
+  }else{
+    pig.src=SVG_SIDE;
+    hideBalance();
+  }
+}
+
+pigArea.addEventListener('pointerdown',e=>{
+  if(isDizzy) return;
+  dragging=true;
+  isClick=true;
+  startX=e.clientX;
+  currentX=e.clientX;
+  shakeDistance=0;
+  lastDirection=0;
+  withdrawAmount=0;
+  emptyNoticeShown=false;
+  pigArea.setPointerCapture(e.pointerId);
+});
+
+pigArea.addEventListener('pointermove',e=>{
+  if(!dragging || isDizzy) return;
+  const dx=e.clientX-currentX;
+  if(Math.abs(e.clientX-startX)>5){
+    isClick=false;
+  }
+  
+  const direction=Math.sign(dx);
+  if(direction!==0){
+    if(lastDirection!==0 && direction!==lastDirection){
+      shakeDistance+=Math.abs(dx);
+      if(data.balance>0){
+        withdrawAmount=Math.min(
+          data.balance,
+          Math.max(5,Math.floor(shakeDistance/30)*5)
+        );
+        withdrawPreview.textContent=`取出：${money(withdrawAmount)}`;
+        withdrawPreview.classList.add('show');
+      } else {
+        // 余额为 0 时判断
+        if(!emptyNoticeShown){
+          showActionTip("晃什么晃，没有钱哇");
+          emptyNoticeShown = true;
+        }
+      }
+    }
+    lastDirection=direction;
+  }
+
+  currentX=e.clientX;
+  const translateX=currentX-startX;
+  pig.style.transform=`translateX(${translateX}px)`;
+});
+
+// 喷水动画
+function playCoinFountainAnimation(callback){
+  pig.classList.add('shaking');
+  
+  const rect = pig.getBoundingClientRect();
+  const slotX = rect.left + rect.width / 2;
+  const slotY = rect.top + rect.height * 0.35;
+  const pigBottomY = rect.bottom;
+  
+  const coinCount = 12;
+  
+  for(let i = 0; i < coinCount; i++){
+    const coin = document.createElement('div');
+    coin.className = 'fountain-coin';
+    coin.style.left = (slotX - 11) + 'px';
+    coin.style.top = (slotY - 11) + 'px';
+    
+    const vx = (Math.random() - 0.5) * 240;
+    const vyPeak = - (80 + Math.random() * 60);
+    const vyBottom = pigBottomY - slotY;
+    
+    coin.style.setProperty('--vx', `${vx}px`);
+    coin.style.setProperty('--vy-peak', `${vyPeak}px`);
+    coin.style.setProperty('--vy-bottom', `${vyBottom}px`);
+    
+    coin.style.animationDelay = `${Math.random() * 0.15}s`;
+    
+    document.body.appendChild(coin);
+    
+    setTimeout(() => {
+      coin.remove();
+    }, 950);
+  }
+
+  setTimeout(() => {
+    pig.classList.remove('shaking');
+    if(callback) callback();
+  }, 800);
+}
+
+// 触发眩晕状态（3秒）
+function triggerDizzyState(callback){
+  isDizzy = true;
+  withdrawPreview.classList.remove('show');
+  if(isBottom){
+    isBottom = false;
+    hideBalance();
+  }
+  pig.src = SVG_DIZZY;
+  showActionTip('OMG你晃晕我啦', 3000);
+
+  setTimeout(() => {
+    isDizzy = false;
+    pig.src = SVG_SIDE; // 恢复为正面/侧面
+    if(callback) callback();
+  }, 3000);
+}
+
+function endDrag(){
+  if(!dragging) return;
+  dragging=false;
+  
+  pig.style.transform=`translateX(0px)`;
+
+  if(isClick){
+    togglePigView();
+  }else if(withdrawAmount>0){
+    const targetAmount = withdrawAmount;
+    
+    // 记录每次完成有效摇晃的时间戳
+    const now = Date.now();
+    shakeHistory.push(now);
+
+    playCoinFountainAnimation(() => {
+      openWithdrawConfirm(targetAmount);
+    });
+  }else{
+    withdrawPreview.classList.remove('show');
+  }
+
+  shakeDistance=0;
+  lastDirection=0;
+}
+
+pigArea.addEventListener('pointerup',endDrag);
+pigArea.addEventListener('pointercancel',endDrag);
+
+function openWithdrawConfirm(amount){
+  modal.innerHTML=`
+    <h2>要取出 ${money(amount)} 吗？</h2>
+    <p>确认后会从当前余额中扣除 ${money(amount)}，并写入存钱记录。</p>
+    <div class="modal-actions">
+      <button id="cancelWithdraw">取消</button>
+      <button class="primary" id="confirmWithdraw">确定取出</button>
+    </div>`;
+  modalBg.classList.add('show');
+  document.getElementById('cancelWithdraw').onclick=closeModal;
+  document.getElementById('confirmWithdraw').onclick=confirmWithdraw;
+}
+
+function confirmWithdraw(){
+  const amount=withdrawAmount;
+  if(!amount||amount>data.balance){closeModal();return}
+  data.balance-=amount;
+  data.totalWithdrawn+=amount;
+  data.transactions.push({
+    time:new Date().toISOString(),
+    type:'取出',
+    amount:-amount,
+    balance:data.balance
+  });
+  persistData();
+  withdrawAmount=0;
+  closeModal();
+
+  // 检查过去 3 分钟（180,000毫秒）内是否有 3 次摇晃记录
+  const now = Date.now();
+  shakeHistory = shakeHistory.filter(t => now - t <= 180000);
+
+  if(shakeHistory.length >= 3){
+    shakeHistory = []; // 触发后重置计数
+    triggerDizzyState();
+  } else {
+    withdrawPreview.classList.remove('show');
+    showActionTip(`已取出 ${money(amount)}`);
+  }
+
+  if(isBottom) updateBalance();
+}
+
+function closeModal(){
+  modalBg.classList.remove('show');
+  withdrawPreview.classList.remove('show');
+  withdrawAmount=0;
+}
+
+modalBg.addEventListener('click',e=>{
+  if(e.target===modalBg)closeModal();
+});
+
+// 存钱
+document.querySelectorAll('.coin').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(isDizzy) return;
+    const amount=Number(btn.dataset.amount);
+    const r=btn.getBoundingClientRect();
+
+    const fly=document.createElement('div');
+    fly.className='fly-coin';
+    fly.textContent=`¥${amount}`;
+    fly.style.left=r.left+(r.width-56)/2+'px';
+    fly.style.top=r.top+(r.height-56)/2+'px';
+
+    const target=pig.getBoundingClientRect();
+    fly.style.setProperty('--dx',
+      (target.left+target.width/2-(r.left+r.width/2))+'px');
+    fly.style.setProperty('--dy',
+      (target.top+target.height*.35-(r.top+r.height/2))+'px');
+
+    document.body.appendChild(fly);
+
+    setTimeout(()=>{
+      fly.remove();
+      data.balance+=amount;
+      data.totalSaved+=amount;
+      data.depositCount++;
+      data.transactions.push({
+        time:new Date().toISOString(),
+        type:'存入',
+        amount:amount,
+        balance:data.balance
+      });
+      persistData();
+      showActionTip(`已存入 ${money(amount)}`);
+      if(isBottom) updateBalance();
+    },650);
+  });
+});
+
+// 日志
+document.getElementById('logBtn').onclick=()=>{
+  const rows=data.transactions.slice().reverse().map(x=>`
+    <div class="log-item">
+      <div>${new Date(x.time).toLocaleString('zh-CN')}<small>${x.type}</small></div>
+      <b>${x.amount>0?'+':''}${money(x.amount)}</b>
+    </div>`).join('');
+
+  modal.innerHTML=`
+    <h2>存钱记录</h2>
+    <div class="log-list">${rows||'<p>还没有存钱记录。</p>'}</div>
+    <div class="modal-actions"><button id="closeLog">关闭</button></div>`;
+  modalBg.classList.add('show');
+  document.getElementById('closeLog').onclick=closeModal;
+};
+
+// 数据管理
+document.getElementById('dataBtn').onclick=async ()=>{
+  modal.innerHTML=`
+    <button class="modal-close" id="closeData">✕</button>
+    <h2>数据管理</h2>
+    <p>${escapeHtml(AUTO_NOTE)}</p>
+    <div class="fs-label">本地日志路径</div>
+    <input id="fsPath" class="fs-input" type="text" placeholder="C:\\Users\\你的用户名\\Documents\\PiggyPeggy" value="">
+    <div class="fs-row">
+      <button id="savePath">保存路径</button>
+      <button class="primary" id="chooseDir">选择文件夹</button>
+    </div>
+    <div class="data-row">
+      <button id="exportCsv">导出 CSV</button>
+      <button id="clearData" class="clear-btn">清空数据</button>
+    </div>`;
+
+  modalBg.classList.add('show');
+  document.getElementById('closeData').onclick=closeModal;
+  document.getElementById('exportCsv').onclick=exportCSV;
+  document.getElementById('savePath').onclick=saveFsPath;
+  document.getElementById('chooseDir').onclick=chooseFsDir;
+  document.getElementById('clearData').onclick=openClearConfirm;
+
+  // 回填已保存的路径（便于用户查找数据文件）
+  const savedPath=await idbGetPath();
+  const input=document.getElementById('fsPath');
+  if(input&&savedPath) input.value=savedPath;
+};
+
+function openClearConfirm(){
+  modal.innerHTML=`
+    <h2>确认清空所有数据？</h2>
+    <p>此操作将重置所有余额与历史存取记录，且不可恢复。建议在清空前先导出备份。</p>
+    <div class="modal-actions">
+      <button id="cancelClear">取消</button>
+      <button class="danger" id="confirmClear">确定清空</button>
+    </div>`;
+  document.getElementById('cancelClear').onclick=closeModal;
+  document.getElementById('confirmClear').onclick=confirmClear;
+}
+
+function confirmClear(){
+  data={...dataDefault};
+  fsSaveData().then(r=>{
+    if(r&&r.ok){
+      showActionTip('所有数据已重置并同步到日志');
+    }else{
+      showActionTip('已重置，但日志同步失败，请先在管理中选择文件夹授权');
+    }
+  });
+  closeModal();
+  if(isBottom) updateBalance();
+}
+
+function download(name,text,type){
+  const blob=new Blob([text],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function exportCSV(){
+  const rows=[
+    ['时间','操作','金额','余额'],
+    ...data.transactions.map(x=>[
+      new Date(x.time).toLocaleString('zh-CN'),
+      x.type,
+      x.amount,
+      x.balance
+    ])
+  ];
+  const csv='\uFEFF'+rows.map(r=>r.join(',')).join('\n');
+  download(
+    `piggypeggy_data.csv`,
+    csv,
+    'text/csv;charset=utf-8'
+  );
+  showActionTip('CSV 记录已导出');
+}
+
+// ---------- 本地日志自动同步（File System Access API） ----------
+const KEY_HANDLE='PiggyPeggyDirHandleV1';
+const KEY_PATH='PiggyPeggyPathV1'; // 仅用于显示：记住用户选择的文件夹名，方便查找数据文件
+const AUTO_NOTE='小猪佩吉会自动扫描路径下的日志加载与保存数据，请做好文件保存，避免误删文件';
+const DATA_FILE='piggypeggy_data'; // 统一数据文件名（.json 存储 / .csv 导出）
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function isFsSupported(){
+  return 'showDirectoryPicker' in window;
+}
+
+/* ---- IndexedDB：持久化文件夹句柄（localStorage 无法序列化句柄对象） ---- */
+let _idb=null;
+function idbOpen(){
+  if(_idb) return Promise.resolve(_idb);
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open('PiggyPeggyDB',1);
+    req.onupgradeneeded=()=>{
+      if(!req.result.objectStoreNames.contains('handles')){
+        req.result.createObjectStore('handles');
+      }
+    };
+    req.onsuccess=()=>{_idb=req.result;resolve(_idb)};
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbSetHandle(h){
+  try{
+    const db=await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('handles','readwrite');
+      tx.objectStore('handles').put(h,KEY_HANDLE);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){return false}
+}
+async function idbGetHandle(){
+  try{
+    const db=await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('handles','readonly');
+      const req=tx.objectStore('handles').get(KEY_HANDLE);
+      req.onsuccess=()=>resolve(req.result||null);
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(e){return null}
+}
+async function idbDelHandle(){
+  try{
+    const db=await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('handles','readwrite');
+      tx.objectStore('handles').delete(KEY_HANDLE);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){return false}
+}
+async function idbSetPath(p){
+  try{
+    const db=await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('handles','readwrite');
+      tx.objectStore('handles').put(p,KEY_PATH);
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){return false}
+}
+async function idbGetPath(){
+  try{
+    const db=await idbOpen();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('handles','readonly');
+      const req=tx.objectStore('handles').get(KEY_PATH);
+      req.onsuccess=()=>resolve(req.result||'');
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(e){return ''}
+}
+
+async function getFsDirHandle(){
+  if(!isFsSupported()) return null;
+  try{
+    const h=await idbGetHandle();
+    if(h){
+      let perm=await h.queryPermission({mode:'readwrite'});
+      // 权限可能因跨会话/跨日被回收为 prompt，尝试请求恢复（无需重新选择目录）
+      if(perm==='prompt'){
+        try{perm=await h.requestPermission({mode:'readwrite'})}catch(e){}
+      }
+      if(perm==='granted') return h;
+    }
+  }catch(e){}
+  return null;
+}
+async function requestFsDir(){
+  if(!isFsSupported()) return null;
+  try{
+    const h=await window.showDirectoryPicker({mode:'readwrite'});
+    await idbSetHandle(h);
+    return h;
+  }catch(e){
+    return null; // 用户取消授权
+  }
+}
+function findLogFile(entries){
+  // 只读取统一命名的 piggypeggy_data 文件
+  return entries.find(f=>f.name.toLowerCase()===(DATA_FILE+'.json').toLowerCase())||null;
+}
+async function fsLoadData(){
+  const dir=await getFsDirHandle();
+  if(!dir) return null;
+  try{
+    const entries=[];
+    for await(const f of dir.values()){
+      if(f.kind==='file'&&f.name.toLowerCase().startsWith(DATA_FILE.toLowerCase())) entries.push(f);
+    }
+    const logFile=findLogFile(entries);
+    if(!logFile) return null; // 未找到日志文件
+    const file=await logFile.getFile();
+    const text=await file.text();
+    const incoming=JSON.parse(text);
+    if(typeof incoming.balance!=='number'||!Array.isArray(incoming.transactions)){
+      throw new Error('invalid');
+    }
+    return {data:{...dataDefault,...incoming},file:logFile};
+  }catch(e){
+    return {error:true};
+  }
+}
+async function fsSaveData(){
+  const dir=await getFsDirHandle();
+  if(!dir) return {ok:false};
+  try{
+    const entries=[];
+    for await(const f of dir.values()){
+      if(f.kind==='file'&&f.name.toLowerCase().startsWith(DATA_FILE.toLowerCase())) entries.push(f);
+    }
+    let logFile=findLogFile(entries);
+    if(!logFile){
+      logFile=await dir.getFileHandle(DATA_FILE+'.json',{create:true});
+    }
+    const w=await logFile.createWritable();
+    await w.write(JSON.stringify(data,null,2));
+    await w.close();
+    return {ok:true,name:logFile.name};
+  }catch(e){
+    return {ok:false};
+  }
+}
+async function fsSyncIn(){
+  const dir=await getFsDirHandle();
+  if(!dir) return;
+  const r=await fsLoadData();
+  if(r&&r.data){
+    data={...r.data};
+    updateBalance(); // 立即刷新余额显示（不管小猪是否在背面）
+    showActionTip('已从本地日志加载数据');
+  }else if(r&&r.error){
+    showActionTip('本地日志读取失败');
+  }else{
+    showActionTip('路径下未找到日志文件，将从空账本开始');
+  }
+  if(isBottom) updateBalance();
+}
+async function saveFsPath(){
+  const input=document.getElementById('fsPath');
+  const p=(input.value||'').trim();
+  if(p){
+    await idbSetPath(p);
+    showActionTip('路径已保存');
+  }else{
+    await idbSetPath('');
+    showActionTip('路径已清空');
+  }
+}
+async function chooseFsDir(){
+  const dir=await requestFsDir();
+  const input=document.getElementById('fsPath');
+  if(dir){
+    input.value=dir.name;
+    await idbSetPath(dir.name); // 记住路径，方便用户日后查找数据文件
+    await fsSyncIn();
+  }
+}
+// 页面开启时自动扫描本地日志；首次使用（无已授权目录）自动弹出管理窗口
+(async function autoSyncOnStartup(){
+  try{
+    if(isFsSupported()){
+      const saved=await getFsDirHandle();
+      if(saved){
+        const r=await fsLoadData();
+        if(r&&r.data){
+          data={...r.data};
+          updateBalance(); // 加载后立即刷新余额显示
+          showActionTip('已从本地日志加载数据');
+        }else if(r&&r.error){
+          showActionTip('本地日志读取失败');
+        }
+      }else{
+        // 首次使用：没有可用的本地日志路径，弹出管理窗口引导填写
+        document.getElementById('dataBtn').click();
+      }
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
