@@ -11,16 +11,6 @@
 - 配置持久化：个人配置保存在浏览器 localStorage
 - 兼容 file:// 直开：ATH.html 内嵌清单兜底，双击即可使用
 
-## 使用
-
-```bash
-python3 -m http.server 8080
-```
-
-浏览器访问 http://localhost:8080/ATH.html
-
-直接双击 ATH.html 也可以正常使用。
-
 ## 添加新工具
 
 1. 在根目录新建文件夹，放入 HTML 文件（推荐命名为 index.html）
