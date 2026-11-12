@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小品：DOCX→EPUB 在线转换工具</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            lavender: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            },
+            dark: {
+              bg: '#0f0f14',
+              card: '#181820',
+              border: '#2a2a36',
+              input: '#22222d',
+              hover: '#2e2e3d'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans SC', 'sans-serif'],
+            serif: ['Playfair Display', 'Noto Serif SC', 'serif'],
+            notoSans: ['Noto Sans SC', 'sans-serif'],
+            notoSerif: ['Noto Serif SC', 'serif'],
+            inter: ['Inter', 'sans-serif'],
+            playfair: ['Playfair Display', 'serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- External JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <style>
+    /* Custom scrollbar for dark modern theme */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #181820;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3b3b4f;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8b5cf6;
+    }
+    
+    .canvas-container {
+      user-select: none;
+    }
+    #docxDropZone.dragover {
+      border-color: rgba(167, 139, 250, 0.9);
+      background: rgba(139, 92, 246, 0.10);
+    }
+    #coverCanvas {
+      touch-action: none;
+    }
+
+    /* 圆形自定义勾选框：16px，勾选时紫色底+白色对勾，未勾选灰色边框空置 */
+    .vspool-checkbox {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid #4b4b5e;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      margin: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .vspool-checkbox:hover { border-color: #8b5cf6; }
+    .vspool-checkbox:checked {
+      background: #8b5cf6;
+      border-color: #8b5cf6;
+    }
+    .vspool-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2.5px;
+      width: 4px;
+      height: 8px;
+      border: solid #fff;
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+
+    /* 封面字体 / 封面比例下拉框：自定义箭头（原生箭头位置不可控），
+       箭头定位比浏览器默认位置（约 right 8px）往左 10px */
+    #fontFamilySelect,
+    #coverRatioSelect {
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 18px center;
+      background-size: 14px 14px;
+      padding-right: 46px;
+    }
+
+    /* 封面比例下拉框：箭头比字体下拉框往右 10px */
+    #coverRatioSelect {
+      background-position: right 8px center;
+    }
+
+    /* 封面比例下拉框：宽度由 JS 在原宽度基础上加 20px */
+  </style>
+</head>
+
+<body class="bg-dark-bg text-gray-100 font-sans min-h-screen flex flex-col antialiased selection:bg-lavender-500 selection:text-white">
+
+  <!-- Header Section -->
+  <header class="border-b border-dark-border bg-dark-card/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl w-full mx-auto px-3 sm:px-4 lg:px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-lavender-600 to-lavender-400 flex items-center justify-center shadow-lg shadow-lavender-500/20">
+          <i data-lucide="book-open" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <span>小品：</span><span>DOCX</span><span class="text-lavender-400">→</span><span>EPUB</span><span>在线转换工具</span>
+          </h1>
+          <p class="text-xs text-gray-400">字斟句酌，细品好本。这是一个纯前端轻量EPUB制作工具。</p>
+        </div>
+      </div>
+      
+      <!-- 右上角：这是什么 -->
+      <a href="javascript:void(0)" onclick="openAboutModal()" class="text-sm text-gray-400 hover:text-lavender-400 transition-colors cursor-pointer mr-0 lg:mr-[100px]">这是什么</a>
+
+    </div>
+  </header>
+
+  <!-- Main Work Area -->
+  <main class="max-w-7xl w-full mx-auto h-auto lg:h-[712px] p-3 sm:p-4 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+    
+    <!-- LEFT PANEL: three cards -->
+    <div class="lg:col-span-7 flex flex-col gap-4 lg:h-[680px] min-h-0">
+      <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 items-stretch lg:h-[300px] shrink-0">
+      <!-- Step 1: Document Upload -->
+      <section class="sm:col-span-2 bg-dark-card border border-dark-border rounded-xl p-4 shadow-sm h-full flex flex-col min-h-0">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-white flex items-center gap-2">
+            <span class="w-6 h-6 rounded-full bg-lavender-500/20 text-lavender-400 text-xs flex items-center justify-center border border-lavender-500/30">1</span>
+            上传 DOCX 文档
+          </h2>
+          <span id="fileStatus" class="text-xs text-gray-400">尚未选择文件</span>
+        </div>
+
+        <div id="docxDropZone" class="relative flex items-center justify-center w-full h-[228px] shrink-0 border-2 border-dashed border-dark-border rounded-lg bg-dark-input/50 transition-all">
+          <label id="docxUploadPrompt" for="docxFile" class="group absolute inset-0 flex flex-col items-center justify-center rounded-lg cursor-pointer hover:bg-dark-input transition-all">
+            <i data-lucide="file-up" class="w-6 h-6 text-gray-400 group-hover:text-lavender-400 transition-colors mb-1"></i>
+            <p class="text-sm text-gray-300 font-medium">点击或拖拽上传 <span class="text-lavender-400">.docx</span> 文件</p>
+            <p class="text-xs text-gray-500 mt-1">本工具不会保存任何你的文件</p>
+          </label>
+          <div id="docxFileDisplay" class="hidden w-full h-full items-center justify-center gap-3 px-4">
+            <i data-lucide="file-text" class="w-5 h-5 shrink-0 text-lavender-400"></i>
+            <span id="docxFileName" class="min-w-0 max-w-[calc(100%-64px)] text-sm text-gray-200 truncate" title=""></span>
+            <button type="button" id="removeDocxBtn" aria-label="删除已上传文档" title="删除文件" class="shrink-0 w-7 h-7 rounded-full border border-dark-border bg-dark-hover hover:bg-rose-500/15 hover:border-rose-400/50 text-gray-400 hover:text-rose-300 flex items-center justify-center transition-colors">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <input id="docxFile" type="file" accept=".docx" class="hidden" />
+        </div>
+      </section>
+
+      <!-- Step 2: Metadata Configuration -->
+      <section class="sm:col-span-3 bg-dark-card border border-dark-border rounded-xl p-4 shadow-sm h-full">
+        <h2 class="text-base font-semibold text-white flex items-center gap-2 mb-3">
+          <span class="w-6 h-6 rounded-full bg-lavender-500/20 text-lavender-400 text-xs flex items-center justify-center border border-lavender-500/30">2</span>
+          书籍元数据
+        </h2>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">书名</label>
+            <input type="text" id="metaTitle" placeholder="未命名书籍" class="w-full bg-dark-input border border-dark-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-lavender-500 transition-colors">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">作者</label>
+            <input type="text" id="metaAuthor" placeholder="佚名" class="w-full bg-dark-input border border-dark-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-lavender-500 transition-colors">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-medium text-gray-400 mb-1">内容简介</label>
+            <textarea id="metaDesc" rows="5" placeholder="请输入简短的内容摘要..." class="w-full bg-dark-input border border-dark-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-lavender-500 transition-colors resize-none h-[132px]"></textarea>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <!-- Step 3: Visual Cover Settings -->
+      <section class="bg-dark-card border border-dark-border rounded-xl p-4 shadow-sm space-y-3 flex-1 min-h-0 overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base font-semibold text-white flex items-center gap-2 w-full lg:w-auto">
+            <span class="w-6 h-6 rounded-full bg-lavender-500/20 text-lavender-400 text-xs flex items-center justify-center border border-lavender-500/30">3</span>
+            封面排版设置
+          </h2>
+          <div class="flex items-center gap-2">
+            <label for="coverRatioSelect" class="text-xs text-gray-400 whitespace-nowrap">封面比例</label>
+            <select id="coverRatioSelect" class="bg-dark-input border border-dark-border rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-lavender-500 transition-colors">
+              <option value="1:1.4" selected>1:1.4</option>
+              <option value="3:4">3:4</option>
+              <option value="9:16">9:16</option>
+            </select>
+            <button type="button" id="resetImageBtn" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-gray-300 hover:text-white transition-colors flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>复位图片
+            </button>
+            <label for="coverImageInput" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-lavender-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1.5">
+              <i data-lucide="image" class="w-3.5 h-3.5"></i>
+              上传背景底图
+            </label>
+          </div>
+          <input type="file" id="coverImageInput" accept="image/*" class="hidden">
+        </div>
+
+        <!-- Cover Toggle Controls -->
+        <!-- 第一行：使用默认封面（含颜色选择） -->
+        <div class="flex items-center gap-4 py-2 border-t border-dark-border/60 flex-wrap">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="useDefaultCoverCheck" checked class="vspool-checkbox">
+            <span class="text-xs text-gray-300">使用默认封面</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400">默认封面颜色：</span>
+            <input type="color" id="defaultCoverColorPicker" value="#311042" class="w-9 h-9 p-0.5 rounded bg-dark-input border border-dark-border cursor-pointer">
+            <span id="defaultCoverColorValue" class="text-xs text-gray-400 uppercase">#311042</span>
+          </div>
+        </div>
+        <!-- 第二行：显示书名/作者/遮罩/阴影 -->
+        <div class="flex items-center gap-4 py-2 border-b border-dark-border/60 flex-wrap">
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="showTitleCheck" checked class="vspool-checkbox">
+            <span class="text-xs text-gray-300">显示书名</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="showAuthorCheck" checked class="vspool-checkbox">
+            <span class="text-xs text-gray-300">显示作者</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="showBgOverlayCheck" checked class="vspool-checkbox">
+            <span class="text-xs text-gray-300">文字遮罩阴影</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer">
+            <input type="checkbox" id="showTextShadowCheck" checked class="vspool-checkbox">
+            <span class="text-xs text-gray-300">文字阴影</span>
+          </label>
+        </div>
+
+        <!-- Typography & Styling Control Tab Content -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Font Family Selection -->
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">封面字体</label>
+            <select id="fontFamilySelect" class="w-full bg-dark-input border border-dark-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-lavender-500 transition-colors">
+              <option value="'Noto Sans SC', sans-serif">思源黑体 (Noto Sans SC)</option>
+              <option value="'Noto Serif SC', serif">思源宋体 (Noto Serif SC)</option>
+              <option value="'Inter', sans-serif">Inter (西文无衬线)</option>
+              <option value="'Playfair Display', serif">Playfair Display (西文衬线)</option>
+            </select>
+          </div>
+
+          <!-- Text Color Picker -->
+          <div>
+            <label class="block text-xs font-medium text-gray-400 mb-1">文字颜色</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="textColorPicker" value="#ffffff" class="w-9 h-9 p-0.5 rounded bg-dark-input border border-dark-border cursor-pointer">
+              <span id="textColorValue" class="text-xs text-gray-400 uppercase">#ffffff</span>
+            </div>
+          </div>
+
+          <!-- Title Size Slider -->
+          <div>
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span>书名字号</span>
+              <span id="titleSizeVal">36px</span>
+            </div>
+            <input type="range" id="titleSizeSlider" min="18" max="72" value="36" class="w-full accent-lavender-500 bg-dark-input">
+          </div>
+
+          <!-- Author Size Slider -->
+          <div>
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span>作者字号</span>
+              <span id="authorSizeVal">20px</span>
+            </div>
+            <input type="range" id="authorSizeSlider" min="12" max="40" value="20" class="w-full accent-lavender-500 bg-dark-input">
+          </div>
+
+          <!-- Image Scaling / Zoom Slider -->
+          <div class="sm:col-span-2">
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span>背景图片缩放</span>
+              <span id="imageScaleVal">100%</span>
+            </div>
+            <input type="range" id="imageScaleSlider" min="50" max="200" value="100" class="w-full accent-lavender-500 bg-dark-input">
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- RIGHT PANEL: cover card + aligned hint card -->
+    <div class="lg:col-span-5 flex flex-col items-start gap-4 lg:h-[680px] min-h-0">
+      <div id="coverPreviewStack" class="self-start flex-none flex flex-col gap-4" style="width:420px;max-width:100%">
+        <section id="coverPreviewCard" class="relative w-full flex-none bg-dark-card border border-dark-border rounded-xl shadow-sm overflow-hidden canvas-container group" style="aspect-ratio:5/7">
+          <canvas id="coverCanvas" width="600" height="840" class="block w-full h-full object-cover cursor-move"></canvas>
+          <div id="canvasLoader" class="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm hidden flex-col items-center justify-center gap-3">
+            <div class="w-8 h-8 border-3 border-lavender-500 border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-xs text-lavender-300">正在解析文档内容...</span>
+          </div>
+        </section>
+
+        <section class="w-full bg-dark-card border border-dark-border rounded-xl px-4 py-3 shadow-sm shrink-0 min-h-[76px]">
+          <div class="flex items-center gap-2 text-xs font-semibold text-gray-300 mb-1.5">
+            <i data-lucide="eye" class="w-3.5 h-3.5 text-lavender-400"></i>
+            <span id="coverRatioHint">封面实时预览（标准 1:1.4）</span>
+          </div>
+          <p class="text-[11px] text-gray-500 leading-relaxed">可在画布内拖动书名、作者或背景图片，调整它们的位置。</p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div class="w-full flex justify-center px-4 pb-5">
+    <button id="convertBtn" class="w-[200px] flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-lavender-600 hover:bg-lavender-500 active:bg-lavender-700 text-white font-medium text-sm transition-all shadow-md shadow-lavender-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
+      <i data-lucide="download" class="w-4 h-4"></i><span>导出 EPUB</span>
+    </button>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed top-[18%] left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2"></div>
+
+  <!-- 【这是什么】弹窗 -->
+  <div id="aboutModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/70">
+    <div class="relative w-[440px] max-w-[92vw] max-h-[90vh] overflow-y-auto bg-dark-card border border-dark-border rounded-xl p-7 shadow-2xl">
+      <button onclick="closeAboutModal()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl leading-none transition-colors cursor-pointer" aria-label="关闭">&times;</button>
+      <div class="text-sm text-gray-300 leading-relaxed whitespace-pre-line space-y-[4px]">
+        <p class="text-[18px] font-bold">“小品”是什么？</p>
+        <p>做「小品」的初衷其实很简单：想把自己写的本做成 EPUB，放进手机或阅读器里，随时随地都能翻开读。</p>
+        <p>试过一些工具，要么需要下载安装，要么不够灵活，没办法自己制作封面。我整理了自己的需求，做成了现在的「小品」。希望它足够轻便，也足够顺手，让大家都能轻轻松松地把自己的作品做成一本真正的电子书。</p>
+        <p>毕竟，看着 App 书架上整整齐齐摆着自己的作品，即使只是吃自己做的小饭，也会多出几分正式出版的仪式感嘛！</p>
+        <p>最后，祝各位太太无论是为了愉悦自己，还是为爱发电；无论创作 OC 还是 CP，都能粮食产量上千亩，好做饭，做饭好，吃得好！</p>
+        <p>最后，升华一下，愿天下创作者都有饱饭吃！</p>
+      </div>
+      <div class="mt-6 flex flex-col items-center">
+        <img src="alipay.jpg" alt="支付宝赞赏码" class="w-[100px] h-[100px] object-contain rounded-lg opacity-20 transition-opacity duration-300 hover:opacity-100" />
+        <p class="mt-2 text-xs text-gray-500">随喜赞赏</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Implementation -->
+  <script>
+    // State management
+    const state = {
+      docxFile: null,
+      htmlContent: '',
+      coverImage: null,
+      bgImageObj: null,
+      imgScale: 1.0,
+      imgOffsetX: 0,
+      imgOffsetY: 0,
+      
+      // Text drag positioning (canvas internal width: 600; height follows selected ratio)
+      titleX: 300,
+      titleY: 682.5,
+      authorX: 300,
+      authorY: 745,
+      
+      titleText: '未命名书籍',
+      authorText: '佚名',
+      
+      showTitle: true,
+      showAuthor: true,
+      showOverlay: true,
+      showTextShadow: true,
+
+      useDefaultCover: true,
+      defaultCoverColor: '#311042',
+      
+      fontFamily: "'Noto Sans SC', sans-serif",
+      textColor: '#ffffff',
+      titleFontSize: 36,
+      authorFontSize: 20,
+      
+      // Dragging tracking
+      isDragging: false,
+      dragTarget: null, // 'title' | 'author' | 'bg'
+      dragStartX: 0,
+      dragStartY: 0,
+      snapGuides: { x: false, y: false }
+    };
+
+    // DOM Elements
+    const canvas = document.getElementById('coverCanvas');
+    const ctx = canvas.getContext('2d');
+    const coverRatioSelect = document.getElementById('coverRatioSelect');
+    // 比例下拉框宽度在原基础上加宽 20px
+    coverRatioSelect.style.width = (coverRatioSelect.offsetWidth + 20) + 'px';
+    const coverPreviewStack = document.getElementById('coverPreviewStack');
+    const coverPreviewCard = document.getElementById('coverPreviewCard');
+    const coverRatioHint = document.getElementById('coverRatioHint');
+    const docxFileInput = document.getElementById('docxFile');
+    const docxDropZone = document.getElementById('docxDropZone');
+    const docxUploadPrompt = document.getElementById('docxUploadPrompt');
+    const docxFileDisplay = document.getElementById('docxFileDisplay');
+    const docxFileName = document.getElementById('docxFileName');
+    const removeDocxBtn = document.getElementById('removeDocxBtn');
+    const metaTitleInput = document.getElementById('metaTitle');
+    const metaAuthorInput = document.getElementById('metaAuthor');
+    const metaDescInput = document.getElementById('metaDesc');
+    const convertBtn = document.getElementById('convertBtn');
+    const coverImageInput = document.getElementById('coverImageInput');
+    
+    const showTitleCheck = document.getElementById('showTitleCheck');
+    const showAuthorCheck = document.getElementById('showAuthorCheck');
+    const showBgOverlayCheck = document.getElementById('showBgOverlayCheck');
+    const showTextShadowCheck = document.getElementById('showTextShadowCheck');
+    const useDefaultCoverCheck = document.getElementById('useDefaultCoverCheck');
+    const defaultCoverColorPicker = document.getElementById('defaultCoverColorPicker');
+    const defaultCoverColorValue = document.getElementById('defaultCoverColorValue');
+    const fontFamilySelect = document.getElementById('fontFamilySelect');
+    const textColorPicker = document.getElementById('textColorPicker');
+    const textColorValue = document.getElementById('textColorValue');
+    const titleSizeSlider = document.getElementById('titleSizeSlider');
+    const authorSizeSlider = document.getElementById('authorSizeSlider');
+    const imageScaleSlider = document.getElementById('imageScaleSlider');
+    const titleSizeVal = document.getElementById('titleSizeVal');
+    const authorSizeVal = document.getElementById('authorSizeVal');
+    const imageScaleVal = document.getElementById('imageScaleVal');
+    const fileStatus = document.getElementById('fileStatus');
+    const canvasLoader = document.getElementById('canvasLoader');
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Init Page & Canvas Default Cover
+    window.addEventListener('DOMContentLoaded', () => {
+      updateCoverRatio();
+      renderCanvas();
+      setupEventListeners();
+    });
+
+    // Update cover dimensions and the paired preview cards for the selected ratio.
+    function updateCoverRatio() {
+      const ratioSettings = {
+        '1:1.4': { width: 420, height: 588, canvasHeight: 840, cssRatio: '5 / 7' },
+        '3:4': { width: 441, height: 588, canvasHeight: 800, cssRatio: '3 / 4' },
+        '9:16': { width: 330.75, height: 588, canvasHeight: 1067, cssRatio: '9 / 16' }
+      };
+      const selected = coverRatioSelect.value;
+      const config = ratioSettings[selected] || ratioSettings['1:1.4'];
+      const oldHeight = canvas.height;
+      const titlePositionRatio = state.titleY / oldHeight;
+      const authorPositionRatio = state.authorY / oldHeight;
+
+      canvas.height = config.canvasHeight;
+      state.titleY = titlePositionRatio * canvas.height;
+      state.authorY = authorPositionRatio * canvas.height;
+
+      coverPreviewStack.style.width = `${config.width}px`;
+      coverPreviewStack.style.maxWidth = '100%';
+      coverPreviewCard.style.aspectRatio = config.cssRatio;
+      coverRatioHint.textContent = `封面实时预览（标准 ${selected}）`;
+
+      if (state.useDefaultCover) createDefaultCoverImage();
+      else renderCanvas();
+    }
+
+    // Create a sleek default gradient cover background
+    // 颜色由用户在"默认封面颜色"中选择（默认色号 #311042，与原默认封面主色一致），
+    // 用户选色后生成基于该颜色的渐变（加深/提亮两端），
+    // 仅在勾选"使用默认封面"时使用默认背景
+    function createDefaultCoverImage() {
+      if (!state.useDefaultCover) return;
+      const baseColor = state.defaultCoverColor || '#311042';
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tCtx = tempCanvas.getContext('2d');
+
+      // Derive darker (0%) and lighter (100%) variants from the base color
+      function shade(hex, percent) {
+        const num = parseInt(hex.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const r = Math.min(255, Math.max(0, (num >> 16) + amt));
+        const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amt));
+        const b = Math.min(255, Math.max(0, (num & 0x0000ff) + amt));
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+
+      // Modern gradient based on chosen color
+      const grad = tCtx.createLinearGradient(0, 0, tempCanvas.width, tempCanvas.height);
+      grad.addColorStop(0, shade(baseColor, -50));
+      grad.addColorStop(0.5, baseColor);
+      grad.addColorStop(1, shade(baseColor, 20));
+      tCtx.fillStyle = grad;
+      tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Subtle abstract geometric accent
+      tCtx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      tCtx.beginPath();
+      tCtx.arc(tempCanvas.width * 0.833, tempCanvas.height * 0.25, 300, 0, Math.PI * 2);
+      tCtx.fill();
+
+      tCtx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+      tCtx.beginPath();
+      tCtx.arc(tempCanvas.width * 0.167, tempCanvas.height * 0.75, 250, 0, Math.PI * 2);
+      tCtx.fill();
+
+      const img = new Image();
+      img.onload = () => {
+        state.bgImageObj = img;
+        renderCanvas();
+      };
+      img.src = tempCanvas.toDataURL('image/jpeg');
+    }
+
+    // Render Cover Canvas
+    function renderCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Draw Background Image
+      if (state.bgImageObj) {
+        const img = state.bgImageObj;
+        const scale = state.imgScale;
+        const w = canvas.width * scale;
+        const h = (canvas.width * (img.height / img.width)) * scale;
+        
+        const x = (canvas.width - w) / 2 + state.imgOffsetX;
+        const y = (canvas.height - h) / 2 + state.imgOffsetY;
+        
+        ctx.drawImage(img, x, y, w, h);
+      }
+
+      // 2. Draw Bottom Dark Gradient Overlay for readability
+      if (state.showOverlay) {
+        const overlayGrad = ctx.createLinearGradient(0, canvas.height * 0.4, 0, canvas.height);
+        overlayGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        overlayGrad.addColorStop(1, 'rgba(0,0,0,0.75)');
+        ctx.fillStyle = overlayGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Alignment guides while dragging text
+      if (state.snapGuides.x || state.snapGuides.y) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(196, 181, 253, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        if (state.snapGuides.x !== false) { ctx.beginPath(); ctx.moveTo(state.snapGuides.x, 0); ctx.lineTo(state.snapGuides.x, canvas.height); ctx.stroke(); }
+        if (state.snapGuides.y !== false) { ctx.beginPath(); ctx.moveTo(0, state.snapGuides.y); ctx.lineTo(600, state.snapGuides.y); ctx.stroke(); }
+        ctx.restore();
+      }
+
+      // 3. Draw Title Text
+      if (state.showTitle && state.titleText) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = state.textColor;
+        ctx.font = `700 ${state.titleFontSize * 1.5}px ${state.fontFamily}`;
+        
+        // Optional text shadow for extra readability
+        if (state.showTextShadow) {
+          ctx.shadowColor = 'rgba(0,0,0,0.6)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+        } else {
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+        wrapText(ctx, state.titleText, state.titleX, state.titleY, 520, state.titleFontSize * 1.8);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+
+      // 4. Draw Author Text
+      if (state.showAuthor && state.authorText) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = state.textColor;
+        ctx.font = `400 ${state.authorFontSize * 1.5}px ${state.fontFamily}`;
+        ctx.opacity = 0.9;
+        
+        if (state.showTextShadow) {
+          ctx.shadowColor = 'rgba(0,0,0,0.5)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+        } else {
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+        ctx.fillText(state.authorText, state.authorX, state.authorY);
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // Helper text wrapper for canvas multi-line support
+    function wrapText(context, text, x, y, maxWidth, lineHeight) {
+      const words = text.split('');
+      let line = '';
+      let currentY = y;
+
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n];
+        const metrics = context.measureText(testLine);
+        const testWidth = metrics.width;
+        if (testWidth > maxWidth && n > 0) {
+          context.fillText(line, x, currentY);
+          line = words[n];
+          currentY += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      context.fillText(line, x, currentY);
+    }
+
+    // Setup UI & Interactive Listeners
+    function setupEventListeners() {
+      // Inputs Metadata Sync
+      metaTitleInput.addEventListener('input', (e) => {
+        state.titleText = e.target.value.trim() || '未命名书籍';
+        renderCanvas();
+      });
+
+      metaAuthorInput.addEventListener('input', (e) => {
+        state.authorText = e.target.value.trim() || '佚名';
+        renderCanvas();
+      });
+
+      // DOCX upload: file picker + drag and drop
+      docxFileInput.addEventListener('change', handleDocxUpload);
+      ['dragenter', 'dragover'].forEach(type => {
+        docxDropZone.addEventListener(type, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          docxDropZone.classList.add('dragover');
+        });
+      });
+      ['dragleave', 'dragend'].forEach(type => {
+        docxDropZone.addEventListener(type, (e) => {
+          e.preventDefault();
+          if (!docxDropZone.contains(e.relatedTarget)) docxDropZone.classList.remove('dragover');
+        });
+      });
+      docxDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        docxDropZone.classList.remove('dragover');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) processDocxFile(file);
+      });
+
+      removeDocxBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        state.docxFile = null;
+        state.htmlContent = '';
+        docxFileInput.value = '';
+        docxFileName.textContent = '';
+        docxFileName.title = '';
+        docxFileDisplay.classList.add('hidden');
+        docxFileDisplay.classList.remove('flex');
+        docxUploadPrompt.classList.remove('hidden');
+        fileStatus.innerText = '尚未选择文件';
+        fileStatus.classList.remove('text-lavender-400');
+        showToast('已移除文档', 'info');
+      });
+
+      // Custom Cover Upload
+      coverImageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            const img = new Image();
+            img.onload = () => {
+              // 用户上传了图片：自动取消"使用默认封面"勾选（上传图优先）
+              useDefaultCoverCheck.checked = false;
+              state.useDefaultCover = false;
+              state.bgImageObj = img;
+              state.imgScale = 1.0;
+              state.imgOffsetX = 0;
+              state.imgOffsetY = 0;
+              imageScaleSlider.value = 100;
+              imageScaleVal.innerText = '100%';
+              renderCanvas();
+              showToast('已更换封面图片', 'success');
+            };
+            img.src = evt.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Reset cover image to its initial scale and centered position
+      document.getElementById('resetImageBtn').addEventListener('click', () => {
+        state.imgScale = 1.0;
+        state.imgOffsetX = 0;
+        state.imgOffsetY = 0;
+        imageScaleSlider.value = 100;
+        imageScaleVal.innerText = '100%';
+        renderCanvas();
+        showToast('背景图片已复位', 'success');
+      });
+
+      coverRatioSelect.addEventListener('change', updateCoverRatio);
+
+      // Toggles & Controls
+      showTitleCheck.addEventListener('change', (e) => { state.showTitle = e.target.checked; renderCanvas(); });
+      showAuthorCheck.addEventListener('change', (e) => { state.showAuthor = e.target.checked; renderCanvas(); });
+      showBgOverlayCheck.addEventListener('change', (e) => { state.showOverlay = e.target.checked; renderCanvas(); });
+      showTextShadowCheck.addEventListener('change', (e) => { state.showTextShadow = e.target.checked; renderCanvas(); });
+
+      // 使用默认封面：勾选时用所选颜色重新生成默认背景；取消时清空背景（等同无底图）
+      useDefaultCoverCheck.addEventListener('change', (e) => {
+        state.useDefaultCover = e.target.checked;
+        if (state.useDefaultCover) {
+          createDefaultCoverImage();
+        } else {
+          state.bgImageObj = null;
+          renderCanvas();
+        }
+      });
+
+      // 默认封面颜色：与文字颜色选择器一致，选择后实时更新默认封面
+      defaultCoverColorPicker.addEventListener('input', (e) => {
+        state.defaultCoverColor = e.target.value;
+        defaultCoverColorValue.innerText = e.target.value.toUpperCase();
+        if (state.useDefaultCover) createDefaultCoverImage();
+      });
+      
+      fontFamilySelect.addEventListener('change', (e) => { state.fontFamily = e.target.value; renderCanvas(); });
+      
+      textColorPicker.addEventListener('input', (e) => {
+        state.textColor = e.target.value;
+        textColorValue.innerText = e.target.value.toUpperCase();
+        renderCanvas();
+      });
+
+      titleSizeSlider.addEventListener('input', (e) => {
+        state.titleFontSize = parseInt(e.target.value);
+        titleSizeVal.innerText = `${state.titleFontSize}px`;
+        renderCanvas();
+      });
+
+      authorSizeSlider.addEventListener('input', (e) => {
+        state.authorFontSize = parseInt(e.target.value);
+        authorSizeVal.innerText = `${state.authorFontSize}px`;
+        renderCanvas();
+      });
+
+      imageScaleSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        state.imgScale = val / 100;
+        imageScaleVal.innerText = `${val}%`;
+        renderCanvas();
+      });
+
+      // Pointer events support mouse, pen and touch consistently
+      canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        canvas.setPointerCapture(e.pointerId);
+        handleMouseDown(e);
+      });
+      canvas.addEventListener('pointermove', (e) => handleMouseMove(e));
+      canvas.addEventListener('pointerup', handleMouseUp);
+      canvas.addEventListener('pointercancel', handleMouseUp);
+
+      // EPUB Export Trigger
+      convertBtn.addEventListener('click', generateEpub);
+    }
+
+    // Handle DOCX picker selection
+    function handleDocxUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) processDocxFile(file);
+    }
+
+    // Shared path for picker and drag-and-drop uploads
+    async function processDocxFile(file) {
+      if (!file || !/\.docx$/i.test(file.name)) {
+        showToast('请上传 .docx 格式的 Word 文档', 'error');
+        return;
+      }
+
+      state.docxFile = file;
+      docxFileName.textContent = file.name;
+      docxFileName.title = file.name;
+      docxUploadPrompt.classList.add('hidden');
+      docxFileDisplay.classList.remove('hidden');
+      docxFileDisplay.classList.add('flex');
+      fileStatus.innerText = '已选择';
+      fileStatus.classList.add('text-lavender-400');
+      lucide.createIcons();
+
+      // Auto populate title from filename
+      const titleWithoutExt = file.name.replace(/\.docx$/i, '');
+      if (!metaTitleInput.value) {
+        metaTitleInput.value = titleWithoutExt;
+        state.titleText = titleWithoutExt;
+      }
+
+      canvasLoader.classList.remove('hidden');
+      canvasLoader.classList.add('flex');
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer: arrayBuffer },
+          {
+            styleMap: [
+              "p[style-name='Title'] => h1:fresh",
+              "p[style-name='Subtitle'] => h2:fresh",
+              "p[style-name='Heading 1'] => h1:fresh",
+              "p[style-name='Heading 2'] => h2:fresh",
+              "p[style-name='Heading 3'] => h3:fresh"
+            ]
+          }
+        );
+        state.htmlContent = result.value;
+        renderCanvas();
+        showToast('Docx 解析完成！', 'success');
+      } catch (err) {
+        console.error(err);
+        state.docxFile = null;
+        state.htmlContent = '';
+        docxFileInput.value = '';
+        docxFileDisplay.classList.add('hidden');
+        docxFileDisplay.classList.remove('flex');
+        docxUploadPrompt.classList.remove('hidden');
+        fileStatus.innerText = '尚未选择文件';
+        fileStatus.classList.remove('text-lavender-400');
+        showToast('Docx 解析失败，请检查文件格式。', 'error');
+      } finally {
+        canvasLoader.classList.add('hidden');
+        canvasLoader.classList.remove('flex');
+      }
+    }
+
+    // Canvas Drag Hit Testing Logic
+    function getCanvasCoordinates(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function handleMouseDown(e) {
+      const coords = getCanvasCoordinates(e);
+      state.snapGuides = { x: false, y: false };
+      
+      // Check title hit (approximate bounding box)
+      const titleDist = Math.hypot(coords.x - state.titleX, coords.y - state.titleY);
+      const authorDist = Math.hypot(coords.x - state.authorX, coords.y - state.authorY);
+
+      if (state.showAuthor && authorDist < 60) {
+        state.isDragging = true;
+        state.dragTarget = 'author';
+      } else if (state.showTitle && titleDist < 80) {
+        state.isDragging = true;
+        state.dragTarget = 'title';
+      } else {
+        state.isDragging = true;
+        state.dragTarget = 'bg';
+        state.dragStartX = coords.x - state.imgOffsetX;
+        state.dragStartY = coords.y - state.imgOffsetY;
+      }
+    }
+
+    function handleMouseMove(e) {
+      if (!state.isDragging) return;
+      const coords = getCanvasCoordinates(e);
+
+      if (state.dragTarget === 'title' || state.dragTarget === 'author') {
+        const prefix = state.dragTarget;
+        const snap = snapTextPosition(coords.x, coords.y);
+        state[prefix + 'X'] = snap.x;
+        state[prefix + 'Y'] = snap.y;
+        state.snapGuides = { x: snap.guideX, y: snap.guideY };
+      } else if (state.dragTarget === 'bg') {
+        const proposedX = coords.x - state.dragStartX;
+        const proposedY = coords.y - state.dragStartY;
+        const snap = snapBackgroundPosition(proposedX, proposedY);
+        state.imgOffsetX = snap.x;
+        state.imgOffsetY = snap.y;
+        state.snapGuides = { x: snap.guideX, y: snap.guideY };
+      }
+      renderCanvas();
+    }
+
+    function snapBackgroundPosition(offsetX, offsetY) {
+      const threshold = 14;
+      const img = state.bgImageObj;
+      if (!img) return { x: offsetX, y: offsetY, guideX: false, guideY: false };
+      const w = canvas.width * state.imgScale;
+      const h = (canvas.width * (img.height / img.width)) * state.imgScale;
+      const baseX = (canvas.width - w) / 2;
+      const baseY = (canvas.height - h) / 2;
+      const result = { x: offsetX, y: offsetY, guideX: false, guideY: false };
+      const xStops = [
+        { offset: -baseX, guide: 0 },
+        { offset: -baseX + (canvas.width - w) / 2, guide: canvas.width / 2 },
+        { offset: canvas.width - baseX - w, guide: canvas.width }
+      ];
+      const yStops = [
+        { offset: -baseY, guide: 0 },
+        { offset: -baseY + (canvas.height - h) / 2, guide: canvas.height / 2 },
+        { offset: canvas.height - baseY - h, guide: canvas.height }
+      ];
+      for (const stop of xStops) {
+        if (Math.abs(result.x - stop.offset) <= threshold) {
+          result.x = stop.offset;
+          result.guideX = stop.guide;
+          break;
+        }
+      }
+      for (const stop of yStops) {
+        if (Math.abs(result.y - stop.offset) <= threshold) {
+          result.y = stop.offset;
+          result.guideY = stop.guide;
+          break;
+        }
+      }
+      return result;
+    }
+
+    function snapTextPosition(x, y) {
+      const threshold = 14;
+      const target = state.dragTarget;
+      const isTitle = target === 'title';
+      ctx.save();
+      ctx.font = isTitle
+        ? `700 ${state.titleFontSize * 1.5}px ${state.fontFamily}`
+        : `400 ${state.authorFontSize * 1.5}px ${state.fontFamily}`;
+      const label = isTitle ? state.titleText : state.authorText;
+      const measuredWidth = ctx.measureText(label).width;
+      ctx.restore();
+      const halfWidth = Math.min(260, measuredWidth / 2);
+      const topInset = isTitle ? state.titleFontSize * 1.5 : state.authorFontSize * 1.5;
+      const bottomInset = 14;
+      const result = {
+        x: Math.max(halfWidth + 12, Math.min(600 - halfWidth - 12, x)),
+        y: Math.max(topInset + 8, Math.min(canvas.height - bottomInset, y)),
+        guideX: false,
+        guideY: false
+      };
+      // Snap the text's center to canvas center, or its visible bounds to any canvas edge.
+      const xStops = [
+        { at: 300, anchor: 'center' },
+        { at: halfWidth + 12, anchor: 'left' },
+        { at: 600 - halfWidth - 12, anchor: 'right' }
+      ];
+      const yStops = [
+        { at: canvas.height / 2, anchor: 'center' },
+        { at: topInset + 8, anchor: 'top' },
+        { at: canvas.height - bottomInset, anchor: 'bottom' }
+      ];
+      for (const stop of xStops) {
+        if (Math.abs(result.x - stop.at) <= threshold) { result.x = stop.at; result.guideX = stop.at; break; }
+      }
+      for (const stop of yStops) {
+        if (Math.abs(result.y - stop.at) <= threshold) { result.y = stop.at; result.guideY = stop.at; break; }
+      }
+      return result;
+    }
+
+    function handleMouseUp() {
+      state.isDragging = false;
+      state.dragTarget = null;
+      state.snapGuides = { x: false, y: false };
+      renderCanvas();
+    }
+
+    // Generate Compliant EPUB Zip Structure
+    async function generateEpub() {
+      if (!state.docxFile && !state.htmlContent) {
+        showToast('请先上传 Word (.docx) 文件', 'error');
+        return;
+      }
+
+      convertBtn.disabled = true;
+      convertBtn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> 导出中...`;
+
+      try {
+        const zip = new JSZip();
+
+        // 1. mimetype (MUST be first and uncompressed per EPUB Spec)
+        zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
+
+        // 2. META-INF/container.xml
+        zip.folder('META-INF').file('container.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`);
+
+        // 3. Render Canvas Cover to JPG Blob
+        const coverBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+        const oebps = zip.folder('OEBPS');
+        oebps.file('cover.jpg', coverBlob);
+
+        // Metadata clean strings
+        const title = escapeXml(metaTitleInput.value.trim() || '未命名书籍');
+        const author = escapeXml(metaAuthorInput.value.trim() || '佚名');
+        const lang = 'zh-CN';
+        const publisher = 'Free Publisher';
+        const desc = escapeXml(metaDescInput.value.trim() || '由 DOCX 转换为 EPUB');
+        const bookId = 'urn:uuid:' + generateUUID();
+
+        // 4. OEBPS/cover.xhtml
+        oebps.file('cover.xhtml', `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="${lang}">
+<head>
+  <title>Cover</title>
+  <style type="text/css">
+    body { margin: 0; padding: 0; text-align: center; background-color: #000000; }
+    img { max-width: 100%; height: auto; margin: 0 auto; display: block; }
+  </style>
+</head>
+<body>
+  <div>
+    <img src="cover.jpg" alt="Cover Image"/>
+  </div>
+</body>
+</html>`);
+
+        // 5. Clean & Format Content HTML
+        const cleanContentHtml = sanitizeContentHtml(state.htmlContent || '<p>无正文内容</p>');
+        oebps.file('text.xhtml', `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="${lang}">
+<head>
+  <title>${title}</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+  <div class="epub-content">
+    ${cleanContentHtml}
+  </div>
+</body>
+</html>`);
+
+        // 6. OEBPS/style.css (Clean Standard Reader Typography)
+        oebps.file('style.css', `
+body {
+  font-family: serif, "Noto Serif SC", "Source Han Serif", Georgia;
+  line-height: 1.8;
+  padding: 5%;
+  margin: 0 auto;
+  color: #222222;
+}
+p {
+  text-indent: 2em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  text-align: justify;
+}
+h1, h2, h3, h4 {
+  font-family: sans-serif, "Noto Sans SC", "Source Han Sans", sans-serif;
+  line-height: 1.3;
+  margin-top: 1.5em;
+  margin-bottom: 0.8em;
+  text-indent: 0;
+  text-align: center;
+  font-weight: bold;
+}
+h1 { font-size: 1.8em; }
+h2 { font-size: 1.4em; }
+h3 { font-size: 1.2em; }
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1em auto;
+}
+blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid #8b5cf6;
+  color: #555;
+  font-style: italic;
+}
+`);
+
+        // 7. OEBPS/content.opf
+        oebps.file('content.opf', `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="BookId">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <dc:identifier id="BookId">${bookId}</dc:identifier>
+    <dc:title>${title}</dc:title>
+    <dc:creator>${author}</dc:creator>
+    <dc:publisher>${publisher}</dc:publisher>
+    <dc:language>${lang}</dc:language>
+    <dc:description>${desc}</dc:description>
+    <meta name="cover" content="cover-image"/>
+  </metadata>
+  <manifest>
+    <item id="cover" href="cover.xhtml" media-type="application/xhtml+xml"/>
+    <item id="cover-image" href="cover.jpg" media-type="image/jpeg" properties="cover-image"/>
+    <item id="text" href="text.xhtml" media-type="application/xhtml+xml"/>
+    <item id="style" href="style.css" media-type="text/css"/>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+  </manifest>
+  <spine toc="ncx">
+    <itemref idref="cover"/>
+    <itemref idref="text"/>
+  </spine>
+</package>`);
+
+        // 8. OEBPS/toc.ncx
+        oebps.file('toc.ncx', `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="${bookId}"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+  </head>
+  <docTitle><text>${title}</text></docTitle>
+  <navMap>
+    <navPoint id="navPoint-1" playOrder="1">
+      <navLabel><text>正文</text></navLabel>
+      <content src="text.xhtml"/>
+    </navPoint>
+  </navMap>
+</ncx>`);
+
+        // Generate EPUB Blob & Trigger Download
+        const content = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
+        saveAsBlob(content, `${metaTitleInput.value.trim() || 'book'}.epub`);
+
+        showToast('EPUB 文件导出成功！', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('导出 EPUB 过程中发生错误', 'error');
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>导出 EPUB</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    // Helper: Strip dirty raw styling from Word HTML
+    function sanitizeContentHtml(html) {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      
+      // Remove inline style tags and ugly Word attributes
+      const allElements = doc.body.querySelectorAll('*');
+      allElements.forEach(el => {
+        el.removeAttribute('style');
+        el.removeAttribute('class');
+        el.removeAttribute('lang');
+      });
+
+      return doc.body.innerHTML;
+    }
+
+    // XML Escaper
+    function escapeXml(unsafe) {
+      return unsafe.replace(/[<>&'"]/g, (c) => {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+        }
+      });
+    }
+
+    // UUID Generator
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    // Trigger File Download
+    function saveAsBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    // Simple Toast Notification UI
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      toast.className = 'bg-white text-lavender-700 border border-lavender-200 text-xs px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0';
+      toast.innerHTML = `<span>${message}</span>`;
+      
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // 【这是什么】弹窗开关
+    function openAboutModal() {
+      document.getElementById('aboutModal').classList.remove('hidden');
+      document.getElementById('aboutModal').classList.add('flex');
+    }
+    function closeAboutModal() {
+      document.getElementById('aboutModal').classList.add('hidden');
+      document.getElementById('aboutModal').classList.remove('flex');
+    }
+    // 点击遮罩关闭
+    document.getElementById('aboutModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('aboutModal')) closeAboutModal();
+    });
+  </script>
+</body>
+</html>
