@@ -136,19 +136,49 @@
       background-position: right 8px center;
     }
 
-    /* 封面比例下拉框：宽度由 JS 在原宽度基础上加 20px */
+    /* 比例下拉框、复位图片、上传封面三控件等宽（grid 三列等宽，自动适配内容最宽者） */
+    .ratio-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+    .ratio-controls > #coverRatioSelect,
+    .ratio-controls > #resetImageBtn,
+    .ratio-controls > label[for="coverImageInput"] {
+      width: 100%;
+      min-width: 0;
+      min-height: 34px;
+    }
+    @media (max-width: 1023px) {
+      .ratio-controls { width: 100%; }
+      .ratio-controls > * { padding-left: 4px; padding-right: 4px; }
+      .ratio-controls > #resetImageBtn,
+      .ratio-controls > label[for="coverImageInput"] {
+        gap: 4px;
+        white-space: nowrap;
+      }
+    }
+    .ratio-controls > * {
+      min-width: 0;
+    }
+    #coverRatioSelect,
+    #resetImageBtn,
+    label[for="coverImageInput"] {
+      justify-content: center;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 
 <body class="bg-dark-bg text-gray-100 font-sans min-h-screen flex flex-col antialiased selection:bg-lavender-500 selection:text-white">
 
-  <!-- Header Section -->
-  <header class="border-b border-dark-border bg-dark-card/80 backdrop-blur sticky top-0 z-50">
+  <!-- Header Section：手机端隐藏，桌面端显示 -->
+  <header class="hidden lg:block border-b border-dark-border bg-dark-card/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl w-full mx-auto px-3 sm:px-4 lg:px-4 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-lavender-600 to-lavender-400 flex items-center justify-center shadow-lg shadow-lavender-500/20">
-          <i data-lucide="book-open" class="w-5 h-5 text-white"></i>
-        </div>
+        <button id="xiaopinLogoDesktop" type="button" onclick="showConversionCount()" aria-label="小品" title="小品" class="w-10 h-10 rounded-xl bg-gradient-to-tr from-lavender-600 to-lavender-400 flex items-center justify-center shadow-lg shadow-lavender-500/20 cursor-pointer">
+          <svg viewBox="0 0 164.56 169.72" class="w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="19"><polygon points="9.5 71.99 62.78 99.94 62.78 160.22 9.5 132.26 9.5 71.99"/><polygon points="155.06 71.99 101.78 99.94 101.78 160.22 155.06 132.26 155.06 71.99"/><path d="M115.47,53.09v-10.41h0c0-18.25-14.94-33.18-33.19-33.18h0c-18.25,0-33.18,14.93-33.18,33.18h0v10.41"/></svg>
+        </button>
         <div>
           <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
             <span>小品：</span><span>DOCX</span><span class="text-lavender-400">→</span><span>EPUB</span><span>在线转换工具</span>
@@ -162,6 +192,16 @@
 
     </div>
   </header>
+
+  <!-- 移动端欢迎区：仅手机端显示（lg 以下），替代 header -->
+  <div class="lg:hidden flex flex-col items-center justify-center h-[500px] shrink-0 px-6 text-center">
+    <button id="xiaopinLogoMobile" type="button" onclick="showConversionCount()" aria-label="小品" title="小品" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-lavender-600 to-lavender-400 flex items-center justify-center shadow-lg shadow-lavender-500/30 cursor-pointer">
+      <svg viewBox="0 0 164.56 169.72" class="w-8 h-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="19"><polygon points="9.5 71.99 62.78 99.94 62.78 160.22 9.5 132.26 9.5 71.99"/><polygon points="155.06 71.99 101.78 99.94 101.78 160.22 155.06 132.26 155.06 71.99"/><path d="M115.47,53.09v-10.41h0c0-18.25-14.94-33.18-33.19-33.18h0c-18.25,0-33.18,14.93-33.18,33.18h0v10.41"/></svg>
+    </button>
+    <h1 class="mt-5 text-2xl font-bold tracking-tight text-white">小品</h1>
+    <p class="mt-2 text-sm text-gray-400">DOCX → EPUB 在线转换工具</p>
+    <a href="javascript:void(0)" onclick="openAboutModal()" class="mt-[30px] text-sm text-gray-400 hover:text-lavender-400 transition-colors cursor-pointer underline underline-offset-4">这是什么</a>
+  </div>
 
   <!-- Main Work Area -->
   <main class="max-w-7xl w-full mx-auto h-auto lg:h-[712px] p-3 sm:p-4 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
@@ -227,20 +267,22 @@
             <span class="w-6 h-6 rounded-full bg-lavender-500/20 text-lavender-400 text-xs flex items-center justify-center border border-lavender-500/30">3</span>
             封面排版设置
           </h2>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-col items-stretch gap-2 w-full lg:w-auto lg:flex-row lg:items-center">
             <label for="coverRatioSelect" class="text-xs text-gray-400 whitespace-nowrap">封面比例</label>
-            <select id="coverRatioSelect" class="bg-dark-input border border-dark-border rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-lavender-500 transition-colors">
-              <option value="1:1.4" selected>1:1.4</option>
-              <option value="3:4">3:4</option>
-              <option value="9:16">9:16</option>
-            </select>
-            <button type="button" id="resetImageBtn" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-gray-300 hover:text-white transition-colors flex items-center gap-1.5">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>复位图片
-            </button>
-            <label for="coverImageInput" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-lavender-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1.5">
-              <i data-lucide="image" class="w-3.5 h-3.5"></i>
-              上传背景底图
-            </label>
+            <div class="ratio-controls">
+              <select id="coverRatioSelect" class="bg-dark-input border border-dark-border rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-lavender-500 transition-colors">
+                <option value="1:1.4" selected>1:1.4</option>
+                <option value="3:4">3:4</option>
+                <option value="9:16">9:16</option>
+              </select>
+              <button type="button" id="resetImageBtn" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-gray-300 hover:text-white transition-colors flex items-center gap-1.5">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>复位图片
+              </button>
+              <label for="coverImageInput" class="px-3 py-1.5 rounded-lg bg-dark-hover border border-dark-border text-xs text-lavender-300 hover:text-white cursor-pointer transition-colors flex items-center gap-1.5">
+                <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                上传封面
+              </label>
+            </div>
           </div>
           <input type="file" id="coverImageInput" accept="image/*" class="hidden">
         </div>
@@ -332,8 +374,8 @@
     </div>
 
     <!-- RIGHT PANEL: cover card + aligned hint card -->
-    <div class="lg:col-span-5 flex flex-col items-start gap-4 lg:h-[680px] min-h-0">
-      <div id="coverPreviewStack" class="self-start flex-none flex flex-col gap-4" style="width:420px;max-width:100%">
+    <div class="lg:col-span-5 flex flex-col items-stretch lg:items-start gap-4 lg:h-[680px] min-h-0">
+      <div id="coverPreviewStack" class="self-stretch lg:self-start w-full lg:w-auto flex-none flex flex-col gap-4" style="width:420px;max-width:100%">
         <section id="coverPreviewCard" class="relative w-full flex-none bg-dark-card border border-dark-border rounded-xl shadow-sm overflow-hidden canvas-container group" style="aspect-ratio:5/7">
           <canvas id="coverCanvas" width="600" height="840" class="block w-full h-full object-cover cursor-move"></canvas>
           <div id="canvasLoader" class="absolute inset-0 bg-dark-bg/80 backdrop-blur-sm hidden flex-col items-center justify-center gap-3">
@@ -353,8 +395,8 @@
     </div>
   </main>
 
-  <div class="w-full flex justify-center px-4 pb-5">
-    <button id="convertBtn" class="w-[200px] flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-lavender-600 hover:bg-lavender-500 active:bg-lavender-700 text-white font-medium text-sm transition-all shadow-md shadow-lavender-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
+  <div class="w-full max-w-7xl flex justify-center items-center px-4 pb-5 mx-auto text-center">
+    <button id="convertBtn" class="mx-auto w-[200px] flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-lavender-600 hover:bg-lavender-500 active:bg-lavender-700 text-white font-medium text-sm transition-all shadow-md shadow-lavender-600/30 disabled:opacity-50 disabled:cursor-not-allowed">
       <i data-lucide="download" class="w-4 h-4"></i><span>导出 EPUB</span>
     </button>
   </div>
@@ -375,14 +417,115 @@
         <p>最后，升华一下，愿天下创作者都有饱饭吃！</p>
       </div>
       <div class="mt-6 flex flex-col items-center">
-        <img src="alipay.jpg" alt="支付宝赞赏码" class="w-[100px] h-[100px] object-contain rounded-lg opacity-20 transition-opacity duration-300 hover:opacity-100" />
-        <p class="mt-2 text-xs text-gray-500">随喜赞赏</p>
+        <img id="alipayQr" src="alipay.jpg" alt="支付宝赞赏码" class="w-[100px] h-[100px] object-contain rounded-lg opacity-20 transition-opacity duration-300 cursor-pointer" />
+        <p id="alipayLabel" class="mt-2 text-xs text-gray-500">随喜赞赏</p>
       </div>
+    </div>
+  </div>
+
+  <!-- Hidden owner-only conversion counter modal; opened only by clicking the Xiaopin logo -->
+  <div id="conversionCountModal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-black/70" role="dialog" aria-modal="true" aria-labelledby="conversionCountTitle">
+    <div class="relative w-[320px] max-w-[88vw] bg-dark-card border border-dark-border rounded-xl p-7 shadow-2xl text-center">
+      <button type="button" onclick="closeConversionCount()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl leading-none transition-colors cursor-pointer" aria-label="关闭">&times;</button>
+      <p id="conversionCountTitle" class="text-sm text-gray-400">累计成功转换</p>
+      <p id="conversionCountValue" class="mt-3 text-4xl font-bold tracking-tight text-lavender-300">读取中…</p>
+      <p id="conversionCountStatus" class="mt-2 text-xs text-gray-500"></p>
     </div>
   </div>
 
   <!-- JavaScript Implementation -->
   <script>
+    // CounterAPI V2 configuration.
+    // workspace 需在 app.counterapi.dev 设为 Public（公开），否则浏览器跨域调用会被 CORS 拦截。
+    // accessToken 仅用于私有 workspace 的服务端代理场景，浏览器端直接调用时不要携带。
+    const COUNTER_API_CONFIG = {
+      workspace: 'ATOOLHUB',
+      counterName: 'epub-conversions'
+    };
+
+    const COUNTER_API_BASE = 'https://api.counterapi.dev/v2';
+
+    async function requestConversionCounter(action = '') {
+      const { workspace, counterName } = COUNTER_API_CONFIG;
+      if (!workspace || !counterName ||
+          workspace === 'YOUR_WORKSPACE') {
+        throw new Error('CounterAPI 尚未配置');
+      }
+
+      const endpoint = `${COUNTER_API_BASE}/${encodeURIComponent(workspace)}/${encodeURIComponent(counterName)}${action}`;
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+      // CounterAPI 以 HTTP 200 + 业务 code 表示成功
+      const body = await response.json().catch(() => null);
+      const bizCode = body?.code;
+      if (!response.ok || (bizCode && bizCode !== '200')) {
+        const message = body?.message || `CounterAPI 请求失败：${response.status}`;
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
+      }
+      return body;
+    }
+
+    async function incrementConversionCount() {
+      try {
+        await requestConversionCounter('/up');
+      } catch (error) {
+        // Counting must never interrupt a completed EPUB download.
+        console.warn('小品转换次数未能同步至 CounterAPI：', error);
+      }
+    }
+
+    // --- PV 记录（仅后台统计，不在页面展示）---
+    const COUNTER_PV_CONFIG = {
+      workspace: 'ATOOLHUB',
+      counterName: 'xiaopinpv'
+    };
+
+    // 页面加载时 PV +1（静默失败，不影响体验）
+    async function recordPageView() {
+      try {
+        const { workspace, counterName } = COUNTER_PV_CONFIG;
+        const endpoint = `${COUNTER_API_BASE}/${encodeURIComponent(workspace)}/${encodeURIComponent(counterName)}/up`;
+        await fetch(endpoint, { method: 'GET', cache: 'no-store' });
+      } catch (error) {
+        console.warn('小品页面浏览未能同步至 CounterAPI：', error);
+      }
+    }
+
+    async function showConversionCount() {
+      const modal = document.getElementById('conversionCountModal');
+      const value = document.getElementById('conversionCountValue');
+      const status = document.getElementById('conversionCountStatus');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      value.textContent = '读取中…';
+      status.textContent = '';
+
+      try {
+        const result = await requestConversionCounter();
+        // CounterAPI V2 响应：{ code: '200', data: { up_count, down_count, ... } }
+        const count = Number(result?.data?.up_count);
+        if (!Number.isFinite(count)) throw new Error('CounterAPI 返回的数据格式无法识别');
+        value.textContent = count.toLocaleString('zh-CN');
+      } catch (error) {
+        value.textContent = '—';
+        if (error?.message === 'Counter not found') {
+          status.textContent = '计数器尚未创建，请到 app.counterapi.dev 创建 epub-conversions';
+        } else {
+          status.textContent = error.message || '暂时无法读取转换次数';
+        }
+      }
+    }
+
+    function closeConversionCount() {
+      const modal = document.getElementById('conversionCountModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
     // State management
     const state = {
       docxFile: null,
@@ -427,8 +570,6 @@
     const canvas = document.getElementById('coverCanvas');
     const ctx = canvas.getContext('2d');
     const coverRatioSelect = document.getElementById('coverRatioSelect');
-    // 比例下拉框宽度在原基础上加宽 20px
-    coverRatioSelect.style.width = (coverRatioSelect.offsetWidth + 20) + 'px';
     const coverPreviewStack = document.getElementById('coverPreviewStack');
     const coverPreviewCard = document.getElementById('coverPreviewCard');
     const coverRatioHint = document.getElementById('coverRatioHint');
@@ -471,6 +612,9 @@
       updateCoverRatio();
       renderCanvas();
       setupEventListeners();
+
+      // 页面加载 PV +1（纯记录，后台看数据）
+      recordPageView();
     });
 
     // Update cover dimensions and the paired preview cards for the selected ratio.
@@ -490,7 +634,7 @@
       state.titleY = titlePositionRatio * canvas.height;
       state.authorY = authorPositionRatio * canvas.height;
 
-      coverPreviewStack.style.width = `${config.width}px`;
+      updateCoverPreviewWidth(config.width);
       coverPreviewStack.style.maxWidth = '100%';
       coverPreviewCard.style.aspectRatio = config.cssRatio;
       coverRatioHint.textContent = `封面实时预览（标准 ${selected}）`;
@@ -498,6 +642,20 @@
       if (state.useDefaultCover) createDefaultCoverImage();
       else renderCanvas();
     }
+
+    function updateCoverPreviewWidth(desktopWidth) {
+      const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+      coverPreviewStack.style.width = isMobile ? '100%' : `${desktopWidth}px`;
+    }
+
+    window.addEventListener('resize', () => {
+      const ratioSettings = {
+        '1:1.4': 420,
+        '3:4': 441,
+        '9:16': 330.75
+      };
+      updateCoverPreviewWidth(ratioSettings[coverRatioSelect.value] || 420);
+    });
 
     // Create a sleek default gradient cover background
     // 颜色由用户在"默认封面颜色"中选择（默认色号 #311042，与原默认封面主色一致），
@@ -1172,6 +1330,7 @@ blockquote {
         // Generate EPUB Blob & Trigger Download
         const content = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
         saveAsBlob(content, `${metaTitleInput.value.trim() || 'book'}.epub`);
+        incrementConversionCount();
 
         showToast('EPUB 文件导出成功！', 'success');
       } catch (err) {
@@ -1258,6 +1417,11 @@ blockquote {
     function openAboutModal() {
       document.getElementById('aboutModal').classList.remove('hidden');
       document.getElementById('aboutModal').classList.add('flex');
+      // 每次打开弹窗恢复二维码透明态与「随喜赞赏」文案
+      const qr = document.getElementById('alipayQr');
+      qr.classList.remove('qr-lit');
+      qr.style.opacity = '';
+      document.getElementById('alipayLabel').textContent = '随喜赞赏';
     }
     function closeAboutModal() {
       document.getElementById('aboutModal').classList.add('hidden');
@@ -1266,6 +1430,28 @@ blockquote {
     // 点击遮罩关闭
     document.getElementById('aboutModal').addEventListener('click', (e) => {
       if (e.target === document.getElementById('aboutModal')) closeAboutModal();
+    });
+
+    // 二维码：点击点亮 / 再点恢复透明；点亮或悬浮时文案变「支付宝」
+    const alipayQr = document.getElementById('alipayQr');
+    const alipayLabel = document.getElementById('alipayLabel');
+    alipayQr.addEventListener('click', () => {
+      const lit = alipayQr.classList.toggle('qr-lit');
+      alipayQr.style.opacity = lit ? '1' : '0.2';
+      alipayLabel.textContent = lit ? '支付宝' : '随喜赞赏';
+    });
+    alipayQr.addEventListener('mouseenter', () => {
+      alipayQr.style.opacity = '1';
+      alipayLabel.textContent = '支付宝';
+    });
+    alipayQr.addEventListener('mouseleave', () => {
+      if (!alipayQr.classList.contains('qr-lit')) {
+        alipayQr.style.opacity = '0.2';
+        alipayLabel.textContent = '随喜赞赏';
+      }
+    });
+    document.getElementById('conversionCountModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('conversionCountModal')) closeConversionCount();
     });
   </script>
 </body>

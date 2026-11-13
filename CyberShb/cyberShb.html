@@ -308,7 +308,7 @@
             align-items: center;
         }
 
-        .appreciation-section:hover .appreciation-body {
+        .appreciation-body.qr-lit {
             opacity: 1;
             filter: grayscale(0%);
         }
@@ -320,6 +320,7 @@
             display: inline-block;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             margin-bottom: 10px;
+            cursor: pointer;
         }
 
         .alipay-hint {
@@ -328,8 +329,67 @@
             letter-spacing: 1px;
         }
 
-        .appreciation-section:hover .alipay-hint {
+        /* --- 计数弹窗 --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-box {
+            position: relative;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 90, 89, 0.25);
+            border-radius: 8px;
+            padding: 26px 32px;
+            text-align: center;
+            min-width: 240px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
             color: var(--text-main);
+        }
+
+        .modal-title {
+            font-family: var(--font-song);
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .modal-value {
+            font-family: var(--font-song);
+            font-size: 2.4rem;
+            font-weight: bold;
+            color: var(--red-main);
+            margin-top: 10px;
+        }
+
+        .modal-status {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 8px;
         }
     </style>
 </head>
@@ -337,7 +397,7 @@
 
     <!-- 1. 标题区 -->
     <header>
-        <h1 class="main-title">赛博圣杯</h1>
+        <h1 class="main-title" id="mainTitle" title="查看累计投掷次数" style="cursor:pointer">赛博圣杯</h1>
         <p class="sub-title">请虔诚发问，心中默祷所求之事</p>
     </header>
 
@@ -370,11 +430,21 @@
     <!-- 4. 随喜赞赏板块 -->
     <footer class="appreciation-section">
         <div class="appreciation-title">随喜赞赏 · 广结善缘</div>
-        <div class="appreciation-body">
+        <div class="appreciation-body" id="appreciationBody">
             <div class="qrcode-box" id="qrcode"></div>
-            <p class="alipay-hint">支付宝扫码，请量力而行</p>
+            <p class="alipay-hint" id="alipayHint">支付宝扫码，请量力而行</p>
         </div>
     </footer>
+
+    <!-- 5. 累计投掷计数弹窗（点击主标题查看） -->
+    <div class="modal-overlay" id="countModal">
+        <div class="modal-box">
+            <button type="button" class="modal-close" id="countModalClose">&times;</button>
+            <div class="modal-title">累计虔诚投掷</div>
+            <div class="modal-value" id="countModalValue">读取中…</div>
+            <div class="modal-status" id="countModalStatus"></div>
+        </div>
+    </div>
 
     <script>
         // --- 基准 SVG 定义 ---
@@ -512,6 +582,8 @@
                 // 更新计数
                 tossCount++;
                 counterText.innerText = `已投掷 ${tossCount} 次`;
+                // 同步累计次数到 CounterAPI（静默失败）
+                incrementTossCount();
 
                 // 1秒后缩小上移并显示文字
                 setTimeout(() => {
@@ -537,6 +609,105 @@
             }, 1100);
         }
 
+        // --- CounterAPI 配置（与 xiaopin 同一 workspace）---
+        const COUNTER_API_CONFIG = {
+            workspace: 'ATOOLHUB',
+            counterName: 'cybershengbei'
+        };
+        const COUNTER_API_BASE = 'https://api.counterapi.dev/v2';
+
+        async function requestTossCounter(action = '') {
+            const { workspace, counterName } = COUNTER_API_CONFIG;
+            const endpoint = `${COUNTER_API_BASE}/${encodeURIComponent(workspace)}/${encodeURIComponent(counterName)}${action}`;
+            const response = await fetch(endpoint, { method: 'GET', cache: 'no-store' });
+            const body = await response.json().catch(() => null);
+            const bizCode = body?.code;
+            if (!response.ok || (bizCode && bizCode !== '200')) {
+                const error = new Error(body?.message || `CounterAPI 请求失败：${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            return body;
+        }
+
+        // 投掷成功时 +1（静默失败，不影响体验）
+        async function incrementTossCount() {
+            try {
+                await requestTossCounter('/up');
+            } catch (error) {
+                console.warn('赛博圣杯投掷次数未能同步至 CounterAPI：', error);
+            }
+        }
+
+        // --- PV 记录（仅后台统计，不在页面展示）---
+        const COUNTER_PV_CONFIG = {
+            workspace: 'ATOOLHUB',
+            counterName: 'cyberpv'
+        };
+
+        // 页面加载时 PV +1（静默失败，不影响体验）
+        async function recordPageView() {
+            try {
+                const { workspace, counterName } = COUNTER_PV_CONFIG;
+                const endpoint = `${COUNTER_API_BASE}/${encodeURIComponent(workspace)}/${encodeURIComponent(counterName)}/up`;
+                await fetch(endpoint, { method: 'GET', cache: 'no-store' });
+            } catch (error) {
+                console.warn('赛博圣杯页面浏览未能同步至 CounterAPI：', error);
+            }
+        }
+
+        // 点击主标题查看累计投掷次数
+        async function showTossCount() {
+            const modal = document.getElementById('countModal');
+            const value = document.getElementById('countModalValue');
+            const status = document.getElementById('countModalStatus');
+            modal.classList.add('show');
+            value.textContent = '读取中…';
+            status.textContent = '';
+            try {
+                const result = await requestTossCounter();
+                const count = Number(result?.data?.up_count);
+                if (!Number.isFinite(count)) throw new Error('CounterAPI 返回的数据格式无法识别');
+                value.textContent = count.toLocaleString('zh-CN');
+            } catch (error) {
+                value.textContent = '—';
+                if (error?.message === 'Counter not found') {
+                    status.textContent = '计数器尚未创建，请到 app.counterapi.dev 创建 cybershengbei';
+                } else {
+                    status.textContent = error.message || '暂时无法读取投掷次数';
+                }
+            }
+        }
+
+        function closeTossCount() {
+            document.getElementById('countModal').classList.remove('show');
+        }
+
+        // --- 二维码点亮交互 ---
+        function initQRCodeInteraction() {
+            const body = document.getElementById('appreciationBody');
+            const hint = document.getElementById('alipayHint');
+            const qrBox = document.querySelector('.qrcode-box');
+            let lit = false; // 是否处于点亮态（点击锁定）
+
+            function setLit(on) {
+                body.classList.toggle('qr-lit', on);
+                hint.textContent = on ? '支付宝' : '支付宝扫码，请量力而行';
+            }
+
+            // 鼠标悬浮（桌面端）
+            qrBox.addEventListener('mouseenter', () => setLit(true));
+            qrBox.addEventListener('mouseleave', () => {
+                if (!lit) setLit(false);
+            });
+            // 点击切换（手机端，同时桌面端也生效）
+            qrBox.addEventListener('click', (e) => {
+                e.preventDefault();
+                lit = !lit;
+                setLit(lit);
+            });
+        }
+
         // --- 初始化生成支付宝二维码 ---
         window.addEventListener('DOMContentLoaded', () => {
             initCups();
@@ -548,6 +719,18 @@
                 colorDark : "#FF5A59",
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.M
+            });
+
+            initQRCodeInteraction();
+
+            // 页面加载 PV +1（纯记录，后台看数据）
+            recordPageView();
+
+            // 计数弹窗开关
+            document.getElementById('mainTitle').addEventListener('click', showTossCount);
+            document.getElementById('countModalClose').addEventListener('click', closeTossCount);
+            document.getElementById('countModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('countModal')) closeTossCount();
             });
         });
     </script>

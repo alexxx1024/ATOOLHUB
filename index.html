@@ -97,7 +97,7 @@
         <div class="max-w-7xl mx-auto px-4 lg:px-8 py-3.5 flex items-center justify-between gap-4">
             <!-- LOGO与标题 -->
             <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-lg">
+                <div onclick="showPvCount()" title="ATOOLHUB" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-lg cursor-pointer transition-transform hover:scale-105">
                     <i class="fa-solid fa-cubes-stacked text-sm"></i>
                 </div>
                 <div>
@@ -137,6 +137,16 @@
             </button>
         </div>
     </main>
+
+    <!-- 浏览量统计弹窗（点击 LOGO 查看） -->
+    <div id="pvModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true">
+        <div class="relative w-[300px] max-w-[88vw] glass-modal rounded-2xl p-7 text-center border border-white/10">
+            <button type="button" onclick="closePvCount()" class="absolute top-3 right-4 text-slate-400 hover:text-white text-2xl leading-none transition-colors cursor-pointer" aria-label="关闭">&times;</button>
+            <p class="text-sm text-slate-400">ATOOLHUB 累计浏览量</p>
+            <p id="pvCountValue" class="mt-3 text-4xl font-bold tracking-tight text-indigo-300">读取中…</p>
+            <p id="pvCountStatus" class="mt-2 text-xs text-slate-500"></p>
+        </div>
+    </div>
 
     <!-- 内嵌工具清单兜底数据（由 scan_tools.py 自动更新；优先加载同目录 tools.json） -->
     <script id="__EMBEDDED_TOOLS__" type="application/json">
@@ -182,6 +192,67 @@
 
     <!-- JS 逻辑实现 -->
     <script>
+        // CounterAPI 浏览量统计配置（页面加载 +1，点击 LOGO 查看累计）
+        const PV_COUNTER_CONFIG = {
+            workspace: 'ATOOLHUB',
+            counterName: 'atoolhub-pvcounter'
+        };
+        const PV_API_BASE = 'https://api.counterapi.dev/v2';
+
+        async function requestPvCounter(action = '') {
+            const { workspace, counterName } = PV_COUNTER_CONFIG;
+            const endpoint = `${PV_API_BASE}/${encodeURIComponent(workspace)}/${encodeURIComponent(counterName)}${action}`;
+            const response = await fetch(endpoint, { method: 'GET', cache: 'no-store' });
+            const body = await response.json().catch(() => null);
+            const bizCode = body?.code;
+            if (!response.ok || (bizCode && bizCode !== '200')) {
+                const error = new Error(body?.message || `CounterAPI 请求失败：${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            return body;
+        }
+
+        // 页面加载时统计一次（静默失败，不影响页面）
+        async function incrementPvCount() {
+            try {
+                await requestPvCounter('/up');
+            } catch (error) {
+                console.warn('ATOOLHUB 浏览量未能同步至 CounterAPI：', error);
+            }
+        }
+
+        // 点击 LOGO 查看累计浏览量
+        async function showPvCount() {
+            const modal = document.getElementById('pvModal');
+            const value = document.getElementById('pvCountValue');
+            const status = document.getElementById('pvCountStatus');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            value.textContent = '读取中…';
+            status.textContent = '';
+
+            try {
+                const result = await requestPvCounter();
+                const count = Number(result?.data?.up_count);
+                if (!Number.isFinite(count)) throw new Error('CounterAPI 返回的数据格式无法识别');
+                value.textContent = count.toLocaleString('zh-CN');
+            } catch (error) {
+                value.textContent = '—';
+                if (error?.message === 'Counter not found') {
+                    status.textContent = '计数器尚未创建，请到 app.counterapi.dev 创建 atoolhub-pvcounter';
+                } else {
+                    status.textContent = error.message || '暂时无法读取浏览量';
+                }
+            }
+        }
+
+        function closePvCount() {
+            const modal = document.getElementById('pvModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
         // 内嵌兜底清单（scan_tools.py 自动生成；file:// 打开时生效）
         function getEmbeddedTools() {
             try {
@@ -205,9 +276,17 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', () => {
+            // 页面浏览 +1（静默）
+            incrementPvCount();
+
             loadTools().then(() => {
                 renderCategoryTabs();
                 renderTools();
+            });
+
+            // 浏览量弹窗：点击遮罩关闭
+            document.getElementById('pvModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('pvModal')) closePvCount();
             });
         });
 
