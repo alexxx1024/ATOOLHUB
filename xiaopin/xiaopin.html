@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>小品：DOCX→EPUB 在线转换工具</title>
+  <title>小品：epub在线制作工具</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -181,7 +181,7 @@
         </button>
         <div>
           <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <span>小品：</span><span>DOCX</span><span class="text-lavender-400">→</span><span>EPUB</span><span>在线转换工具</span>
+            <span>小品：</span><span class="text-lavender-400">epub</span><span>在线制作工具</span>
           </h1>
           <p class="text-xs text-gray-400">字斟句酌，细品好本。这是一个纯前端轻量EPUB制作工具。</p>
         </div>
@@ -199,7 +199,7 @@
       <svg viewBox="0 0 164.56 169.72" class="w-8 h-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="19"><polygon points="9.5 71.99 62.78 99.94 62.78 160.22 9.5 132.26 9.5 71.99"/><polygon points="155.06 71.99 101.78 99.94 101.78 160.22 155.06 132.26 155.06 71.99"/><path d="M115.47,53.09v-10.41h0c0-18.25-14.94-33.18-33.19-33.18h0c-18.25,0-33.18,14.93-33.18,33.18h0v10.41"/></svg>
     </button>
     <h1 class="mt-5 text-2xl font-bold tracking-tight text-white">小品</h1>
-    <p class="mt-2 text-sm text-gray-400">DOCX → EPUB 在线转换工具</p>
+    <p class="mt-2 text-sm text-gray-400">epub在线制作工具</p>
     <a href="javascript:void(0)" onclick="openAboutModal()" class="mt-[30px] text-sm text-gray-400 hover:text-lavender-400 transition-colors cursor-pointer underline underline-offset-4">这是什么</a>
   </div>
 
@@ -214,7 +214,7 @@
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-base font-semibold text-white flex items-center gap-2">
             <span class="w-6 h-6 rounded-full bg-lavender-500/20 text-lavender-400 text-xs flex items-center justify-center border border-lavender-500/30">1</span>
-            上传 DOCX 文档
+            上传文档
           </h2>
           <span id="fileStatus" class="text-xs text-gray-400">尚未选择文件</span>
         </div>
@@ -222,7 +222,8 @@
         <div id="docxDropZone" class="relative flex items-center justify-center w-full h-[228px] shrink-0 border-2 border-dashed border-dark-border rounded-lg bg-dark-input/50 transition-all">
           <label id="docxUploadPrompt" for="docxFile" class="group absolute inset-0 flex flex-col items-center justify-center rounded-lg cursor-pointer hover:bg-dark-input transition-all">
             <i data-lucide="file-up" class="w-6 h-6 text-gray-400 group-hover:text-lavender-400 transition-colors mb-1"></i>
-            <p class="text-sm text-gray-300 font-medium">点击或拖拽上传 <span class="text-lavender-400">.docx</span> 文件</p>
+            <p class="text-sm text-gray-300 font-medium">点击或拖拽上传文件</p>
+            <p class="text-xs text-gray-500 mt-1">现已支持：.doc / .docx / .txt</p>
             <p class="text-xs text-gray-500 mt-1">本工具不会保存任何你的文件</p>
           </label>
           <div id="docxFileDisplay" class="hidden w-full h-full items-center justify-center gap-3 px-4">
@@ -232,7 +233,7 @@
               <i data-lucide="x" class="w-4 h-4"></i>
             </button>
           </div>
-          <input id="docxFile" type="file" accept=".docx" class="hidden" />
+          <input id="docxFile" type="file" accept=".doc,.docx,.txt" class="hidden" />
         </div>
       </section>
 
@@ -844,7 +845,7 @@
         e.stopPropagation();
         docxDropZone.classList.remove('dragover');
         const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-        if (file) processDocxFile(file);
+        if (file) processDocumentFile(file);
       });
 
       removeDocxBtn.addEventListener('click', (e) => {
@@ -970,13 +971,15 @@
     // Handle DOCX picker selection
     function handleDocxUpload(e) {
       const file = e.target.files && e.target.files[0];
-      if (file) processDocxFile(file);
+      if (file) processDocumentFile(file);
     }
 
     // Shared path for picker and drag-and-drop uploads
-    async function processDocxFile(file) {
-      if (!file || !/\.docx$/i.test(file.name)) {
-        showToast('请上传 .docx 格式的 Word 文档', 'error');
+    async function processDocumentFile(file) {
+      if (!file) return;
+      const ext = (file.name.match(/\.([^.]+)$/i) || [])[1]?.toLowerCase();
+      if (!['docx', 'doc', 'txt', 'epub'].includes(ext)) {
+        showToast('请上传 .doc / .docx / .txt 文件', 'error');
         return;
       }
 
@@ -986,12 +989,12 @@
       docxUploadPrompt.classList.add('hidden');
       docxFileDisplay.classList.remove('hidden');
       docxFileDisplay.classList.add('flex');
-      fileStatus.innerText = '已选择';
+      fileStatus.innerText = '解析中…';
       fileStatus.classList.add('text-lavender-400');
       lucide.createIcons();
 
       // Auto populate title from filename
-      const titleWithoutExt = file.name.replace(/\.docx$/i, '');
+      const titleWithoutExt = file.name.replace(/\.[^.]+$/i, '');
       if (!metaTitleInput.value) {
         metaTitleInput.value = titleWithoutExt;
         state.titleText = titleWithoutExt;
@@ -1001,22 +1004,15 @@
       canvasLoader.classList.add('flex');
 
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.convertToHtml(
-          { arrayBuffer: arrayBuffer },
-          {
-            styleMap: [
-              "p[style-name='Title'] => h1:fresh",
-              "p[style-name='Subtitle'] => h2:fresh",
-              "p[style-name='Heading 1'] => h1:fresh",
-              "p[style-name='Heading 2'] => h2:fresh",
-              "p[style-name='Heading 3'] => h3:fresh"
-            ]
-          }
-        );
-        state.htmlContent = result.value;
+        let html;
+        if (ext === 'docx') html = await parseDocxFile(file);
+        else if (ext === 'doc') html = await parseDocFile(file);
+        else if (ext === 'txt') html = await parseTxtFile(file);
+
+        if (!html || !html.trim()) throw new Error('解析结果为空');
+        state.htmlContent = html;
         renderCanvas();
-        showToast('Docx 解析完成！', 'success');
+        showToast(`${ext.toUpperCase()} 解析完成！`, 'success');
       } catch (err) {
         console.error(err);
         state.docxFile = null;
@@ -1027,11 +1023,98 @@
         docxUploadPrompt.classList.remove('hidden');
         fileStatus.innerText = '尚未选择文件';
         fileStatus.classList.remove('text-lavender-400');
-        showToast('Docx 解析失败，请检查文件格式。', 'error');
+        showToast(`${ext.toUpperCase()} 解析失败，请检查文件格式。`, 'error');
       } finally {
         canvasLoader.classList.add('hidden');
         canvasLoader.classList.remove('flex');
       }
+    }
+
+    // .docx -> HTML via mammoth
+    async function parseDocxFile(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.convertToHtml(
+        { arrayBuffer: arrayBuffer },
+        {
+          styleMap: [
+            "p[style-name='Title'] => h1:fresh",
+            "p[style-name='Subtitle'] => h2:fresh",
+            "p[style-name='Heading 1'] => h1:fresh",
+            "p[style-name='Heading 2'] => h2:fresh",
+            "p[style-name='Heading 3'] => h3:fresh"
+          ]
+        }
+      );
+      return result.value;
+    }
+
+    // .doc (Word 97-2003) -> HTML via doc-preview worker
+    const DOC_WORKER_URL = 'https://cdn.jsdelivr.net/npm/@zhenghy/doc-preview@0.7.83/dist-lib/assets/docParser.worker-CTF4FXKN.js';
+    async function parseDocFile(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const worker = new Worker(DOC_WORKER_URL);
+      try {
+        const result = await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('解析超时')), 30000);
+          worker.onmessage = (e) => {
+            if (e.data && e.data.type === 'result') {
+              clearTimeout(timer);
+              resolve(e.data);
+            }
+          };
+          worker.onerror = (e) => { clearTimeout(timer); reject(new Error(e.message || 'Worker 加载失败')); };
+          worker.postMessage({ buffer: arrayBuffer, maxScanBytes: 20 * 1024 * 1024 });
+        });
+        if (!result.success) throw new Error(result.error || '解析失败');
+        // 优先用带格式的段落构建 HTML（标题/粗体可保留），失败则回退纯文本
+        if (result.document && Array.isArray(result.document.paragraphs)) {
+          return docParagraphsToHtml(result.document.paragraphs);
+        }
+        return (result.text || '').split('\n').map(p => `<p>${escapeHtml(p)}</p>`).join('');
+      } finally {
+        worker.terminate();
+      }
+    }
+
+    // .txt -> HTML（UTF-8 优先，失败回退 GBK）
+    async function parseTxtFile(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      let text;
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(arrayBuffer);
+      } catch (e) {
+        text = new TextDecoder('gbk').decode(arrayBuffer);
+      }
+      return text.split(/\r?\n/).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+    }
+
+    // doc-preview 段落 -> HTML（保留标题/加粗/居中结构）
+    function docParagraphsToHtml(paragraphs) {
+      const headingSizes = [1.8, 1.4, 1.2, 1.1];
+      const out = [];
+      for (const p of paragraphs) {
+        const text = (p.text || '').trim();
+        if (!text) continue;
+        const fontSize = p.charFormat?.fontSize || 0;
+        const bold = p.charFormat?.bold;
+        const align = p.paraFormat?.alignment;
+        let inner = escapeHtml(text);
+        if (bold) inner = `<strong>${inner}</strong>`;
+        if (fontSize >= 24) {
+          const level = Math.min(Math.floor((fontSize - 24) / 4), 3);
+          out.push(`<h${level + 1} style="text-align:${align || 'center'}">${inner}</h${level + 1}>`);
+        } else {
+          out.push(`<p${align && align !== 'left' ? ` style="text-align:${align}"` : ''}>${inner}</p>`);
+        }
+      }
+      return out.join('');
+    }
+
+    // 简易 HTML 转义（用于纯文本段落）
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+      ));
     }
 
     // Canvas Drag Hit Testing Logic
@@ -1174,7 +1257,7 @@
     // Generate Compliant EPUB Zip Structure
     async function generateEpub() {
       if (!state.docxFile && !state.htmlContent) {
-        showToast('请先上传 Word (.docx) 文件', 'error');
+        showToast('请先上传文档文件', 'error');
         return;
       }
 
