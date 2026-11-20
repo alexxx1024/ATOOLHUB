@@ -10,8 +10,9 @@
     "desc": "个人存钱罐"
   },
   "xiaopin": {
+    "name": "小品：epub在线制作工具",
     "category": "转换",
     "emoji": "📚",
-    "desc": "DOCX 转 EPUB 在线转换工具"
+    "desc": "epub 在线制作工具"
   }
 }
